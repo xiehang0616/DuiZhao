@@ -1,0 +1,15 @@
+.loading-demo{min-height:100svh;display:flex;flex-direction:column;background:var(--bg);color:var(--fg)}
+.loading-demo-header{display:flex;align-items:center;justify-content:space-between;width:min(100% - 48px,1000px);margin:0 auto;padding:24px 0}
+.loading-demo-header a{font-size:14px;color:var(--muted);text-decoration:none}
+.loading-demo-header a:hover{color:var(--fg)}
+.loading-demo-main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;gap:48px}
+.loading-demo-stage{display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px}
+.loading-demo-stage h1{margin:0;font-size:clamp(24px,4vw,32px);font-weight:500;letter-spacing:.03em;line-height:1.6}
+.loading-demo-stage p{margin:0;color:var(--muted);font-size:14px;line-height:1.8}
+.loading-demo .text-shimmer{--shimmer-duration:2.8s;background-image:linear-gradient(110deg,var(--muted) 25%,#67cdd7 43%,var(--fg) 50%,#d692cb 57%,var(--muted) 75%)}
+.loading-demo[data-paused=true] .text-shimmer{animation-play-state:paused}
+.loading-demo-pause{background:transparent;border:1px solid var(--border);border-radius:8px;padding:10px 18px;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
+.loading-demo-pause:hover{color:var(--fg);border-color:var(--muted)}
+.loading-demo footer{text-align:center;color:var(--muted);font-size:12px;padding:24px}
+.loading-demo :is(a,button):focus-visible{outline:2px solid var(--fg);outline-offset:4px}
+@media(prefers-reduced-motion:reduce){.loading-demo .text-shimmer{animation:none;background:none;color:var(--fg)}}

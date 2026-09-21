@@ -1,0 +1,43 @@
+.composer-beam{width:100%;min-width:0;isolation:isolate}
+/* Keep the opaque panel below the library's soft inner halo. */
+.composer-beam>.composer{position:relative;z-index:auto}
+.composer-beam>.composer>textarea,.composer-beam .composer-toolbar,.composer-beam .c2c-composer-context{position:relative;z-index:4}
+.model-orb{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;flex:none;line-height:0}
+.model-orb canvas{display:block}
+/* One color field and rotation mask keep the diffuse stroke and inner light aligned. */
+.composer-beam{
+ --composer-glow-depth:60px;
+ --composer-color-field:
+  radial-gradient(ellipse 180px 100px at 33% 0%,#e56a8d,transparent),
+  radial-gradient(ellipse 150px 95px at 12% 0%,#449fe8,transparent),
+  radial-gradient(ellipse 100px 155px at 0% 68%,#59bc91,transparent),
+  radial-gradient(ellipse 285px 105px at 66% 100%,#5d91e9,transparent),
+  radial-gradient(ellipse 185px 90px at 53% 100%,#42c4d6,transparent),
+  radial-gradient(ellipse 170px 95px at 94% 0%,#e6a87b,transparent),
+  radial-gradient(ellipse 105px 140px at 100% 27%,#c570df,transparent);
+ --composer-travel-mask:conic-gradient(from var(--composer-beam-angle,0deg),transparent 0% 30%,#ffffff1a 36%,#ffffff59 44%,white 52% 80%,#ffffff59 86%,#ffffff1a 92%,transparent 95% 100%);
+}
+.composer-beam[data-beam]:is([data-active],[data-fading])::before,.composer-beam[data-beam]:is([data-active],[data-fading])::after,.composer-beam[data-beam]:is([data-active],[data-fading]) [data-beam-bloom]{background:var(--composer-color-field)}
+.composer-beam[data-beam]:is([data-active],[data-fading])::before{
+ -webkit-mask-image:var(--composer-travel-mask),linear-gradient(white,transparent var(--composer-glow-depth),transparent calc(100% - var(--composer-glow-depth)),white),linear-gradient(to right,white,transparent var(--composer-glow-depth),transparent calc(100% - var(--composer-glow-depth)),white);
+ mask-image:var(--composer-travel-mask),linear-gradient(white,transparent var(--composer-glow-depth),transparent calc(100% - var(--composer-glow-depth)),white),linear-gradient(to right,white,transparent var(--composer-glow-depth),transparent calc(100% - var(--composer-glow-depth)),white);
+ box-shadow:none;
+}
+.composer-beam[data-beam]:is([data-active],[data-fading])::after,.composer-beam[data-beam]:is([data-active],[data-fading]) [data-beam-bloom]{
+ padding:1.5px;
+ border-radius:14px;
+ -webkit-mask:var(--composer-travel-mask),linear-gradient(white 0 0) content-box,linear-gradient(white 0 0);
+ -webkit-mask-composite:source-in,xor;
+ mask:var(--composer-travel-mask),linear-gradient(white 0 0) content-box,linear-gradient(white 0 0);
+ mask-composite:intersect,exclude;
+}
+.composer-beam[data-beam]:is([data-active],[data-fading]) [data-beam-bloom]{clip-path:none;filter:blur(5px)}
+@media(max-width:759px){.composer-beam{--composer-glow-depth:44px}}
+/* Preserve a neutral focus boundary when decorative motion is disabled. */
+@media(prefers-reduced-motion:reduce){
+ .composer-beam[data-beam],.composer-beam[data-beam]::before,.composer-beam[data-beam]::after,.composer-beam[data-beam] [data-beam-bloom]{animation:none!important;transition:none!important}
+ .composer-beam[data-beam]::before,.composer-beam[data-beam]::after,.composer-beam[data-beam] [data-beam-bloom]{display:none!important}
+}
+
+.model-status{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.model-letter{display:grid;place-items:center;width:22px;height:22px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--fg);font:600 12px/1 var(--sans)}

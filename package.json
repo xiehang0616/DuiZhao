@@ -1,0 +1,29 @@
+{
+  "name": "duizhao-workbench",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "start": "node scripts/dev.mjs",
+    "build": "node build-arena.mjs",
+    "preview": "node scripts/preview.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@animateicons/react": "0.5.0",
+    "@ant-design/pro-components": "3.1.14-2",
+    "antd": "6.6.5",
+    "border-beam": "1.3.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "thinking-orbs": "0.3.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  },
+  "description": "对照 DUIZHAO · 多模型与 C2C 前端交互原型",
+  "engines": {
+    "node": ">=22"
+  }
+}

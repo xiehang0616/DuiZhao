@@ -1,0 +1,17 @@
+# 依赖
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 环境与密钥
+.env
+.env.local
+
+# 系统文件
+.DS_Store
+
+# 交付归档大文件（不入库）
+对照-DUIZHAO-开发交接-*.zip
+*.zip.sha256
