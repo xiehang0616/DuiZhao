@@ -22,3 +22,8 @@
 .soft-focus-field.ant-input-affix-wrapper:is(:focus-within,.ant-input-affix-wrapper-focused){outline:none!important;box-shadow:none!important;border-width:1px;border-color:var(--field-focus-border)!important}
 .soft-focus-field.ant-input-affix-wrapper input.ant-input,
 .soft-focus-field.ant-input-affix-wrapper input.ant-input:is(:focus,:focus-visible){outline:none!important;box-shadow:none!important;border:0!important}
+
+/* Select owns the outer border; its search input must stay unframed. */
+.soft-focus-field.ant-select:is(:focus-within,.ant-select-focused){outline:none!important;box-shadow:none!important;border-width:1px;border-color:var(--field-focus-border)!important}
+.soft-focus-field.ant-select .ant-select-input,
+.soft-focus-field.ant-select .ant-select-input:is(:focus,:focus-visible){outline:none!important;box-shadow:none!important;border:0!important}

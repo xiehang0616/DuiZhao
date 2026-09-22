@@ -16,6 +16,8 @@ const Icon=({icon,size=20})=><HugeiconsIcon icon={icon} size={size} strokeWidth=
 const TYPES=[{key:'text',name:'文本',description:'与模型对话，比较文字回答',icon:TextIcon},{key:'image',name:'图片',description:'描述画面，比较图片效果',icon:Image01Icon},{key:'code',name:'代码',description:'描述需求，比较代码实现',icon:SourceCodeIcon},{key:'video',name:'视频',description:'描述镜头与动作 · 待接入',icon:Video01Icon,disabled:true}];
 const ATTACH_TYPES=[{key:'text',name:'文本',description:'粘贴补充材料',icon:TextIcon},{key:'form',name:'表单',description:'PDF、Word、Excel、CSV',icon:File01Icon},{key:'image',name:'图片',description:'PNG、JPG、WebP、GIF',icon:Image01Icon},{key:'video',name:'视频',description:'MP4、MOV、WebM',icon:Video01Icon}];
 
+const MENU_SCALE = 0.7;
+
 // Portal keeps both the home and dock menus clear of the composer's animated border.
 function ComposerMenu({items,value,onSelect,disabled,label,attachment=false}){
  const [open,setOpen]=useState(false),[position,setPosition]=useState(null);
@@ -24,8 +26,8 @@ function ComposerMenu({items,value,onSelect,disabled,label,attachment=false}){
  const close=(restore=false)=>{setOpen(false);if(restore)trigger.current?.focus()};
  useLayoutEffect(()=>{
   if(!open)return;
-  const place=()=>{const r=trigger.current.getBoundingClientRect(),width=Math.min(attachment?290:330,window.innerWidth-24),above=r.top-20,below=window.innerHeight-r.bottom-20;
-   const up=above>=Math.min(attachment?280:316,below);
+  const place=()=>{const r=trigger.current.getBoundingClientRect(),width=Math.min((attachment?290:330)*MENU_SCALE,window.innerWidth-24),above=r.top-20,below=window.innerHeight-r.bottom-20;
+   const up=above>=Math.min((attachment?280:316)*MENU_SCALE,below);
    setPosition({left:Math.max(12,Math.min(r.left,window.innerWidth-width-12)),width,maxHeight:Math.max(80,up?above:below),...(up?{bottom:window.innerHeight-r.top+8}:{top:r.bottom+8}),transformOrigin:up?'left bottom':'left top'});
   };place();window.addEventListener('resize',place);window.addEventListener('scroll',place,true);
   const outside=e=>{if(!menu.current?.contains(e.target)&&!trigger.current?.contains(e.target))close()};
@@ -45,10 +47,10 @@ function ComposerMenu({items,value,onSelect,disabled,label,attachment=false}){
   <motion.button ref={trigger} type="button" disabled={disabled} className={(attachment?'attachment-trigger icon-btn':'compare-type-trigger')+(open?' is-open':'')} aria-label={label} aria-haspopup="menu" aria-expanded={open} aria-controls={open?id:undefined} whileTap={!attachment&&!reduce?{scale:.96}:undefined} onClick={()=>setOpen(v=>!v)} onKeyDown={e=>{if(['ArrowDown','ArrowUp'].includes(e.key)){e.preventDefault();setOpen(true)}}}>
    <Icon icon={attachment?Add01Icon:current.icon} size={attachment?19:17}/>{!attachment&&<><span>{current.name}</span><motion.span className="compare-type-arrow" animate={{rotate:open?180:0}} transition={{duration:reduce?0:.2}}><Icon icon={ArrowDown01Icon} size={13}/></motion.span></>}
   </motion.button>
-  {createPortal(<AnimatePresence>{open&&position&&<motion.div ref={menu} id={id} role="menu" aria-label={attachment?'添加附件':'内容类型'} className={'composer-popover '+(attachment?'attachment-menu':'compare-type-menu')} style={position} initial={{opacity:0,scale:reduce?1:.96,y:reduce?0:8}} animate={{opacity:1,scale:1,y:0}} exit={{opacity:0,scale:reduce?1:.97,y:reduce?0:5}} transition={{duration:reduce?0:.24,ease:[.22,1,.36,1]}} onKeyDown={keydown}>
+  {createPortal(<AnimatePresence>{open&&position&&<motion.div ref={menu} id={id} role="menu" aria-label={attachment?'添加附件':'内容类型'} className={'composer-popover '+(attachment?'attachment-menu':'compare-type-menu')} style={{...position,'--menu-scale':MENU_SCALE}} initial={{opacity:0,scale:reduce?1:.96,y:reduce?0:8}} animate={{opacity:1,scale:1,y:0}} exit={{opacity:0,scale:reduce?1:.97,y:reduce?0:5}} transition={{duration:reduce?0:.24,ease:[.22,1,.36,1]}} onKeyDown={keydown}>
    {items.map((item,index)=>{const selected=!attachment&&value===item.key;return <motion.button key={item.key} type="button" role={attachment?'menuitem':'menuitemradio'} aria-checked={attachment?undefined:selected} tabIndex={-1} disabled={item.disabled} className={'compare-type-item '+(selected?'is-selected':'')} onClick={()=>{onSelect(item.key);close(true)}} initial={{opacity:0,y:reduce?0:5}} animate={{opacity:1,y:0}} transition={{delay:reduce?0:index*.025,duration:reduce?0:.18}} whileHover={!item.disabled&&!reduce?{x:2}:undefined} whileTap={!item.disabled&&!reduce?{scale:.985}:undefined}>
-    <span className="compare-type-icon"><Icon icon={item.icon} size={23}/></span><span className="compare-type-copy"><strong>{item.name}</strong><span>{item.description}</span></span>
-    {selected&&<motion.span className="compare-type-check" initial={{opacity:0,scale:reduce?1:.7}} animate={{opacity:1,scale:1}} transition={reduce?{duration:0}:{type:'spring',stiffness:500,damping:28}}><Icon icon={Tick02Icon} size={21}/></motion.span>}
+    <span className="compare-type-icon"><Icon icon={item.icon} size={23*MENU_SCALE}/></span><span className="compare-type-copy"><strong>{item.name}</strong><span>{item.description}</span></span>
+    {selected&&<motion.span className="compare-type-check" initial={{opacity:0,scale:reduce?1:.7}} animate={{opacity:1,scale:1}} transition={reduce?{duration:0}:{type:'spring',stiffness:500,damping:28}}><Icon icon={Tick02Icon} size={21*MENU_SCALE}/></motion.span>}
    </motion.button>})}
   </motion.div>}</AnimatePresence>,document.body)}
  </>;
