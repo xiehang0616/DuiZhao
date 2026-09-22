@@ -13,11 +13,11 @@ MOCK_TEXT = (
 )
 
 
-async def stream_completion(model, question, system_prompt):
-    """逐段产出文本；无 Key 时走 mock，有 Key 时走真实 OpenAI 兼容接口。"""
+async def stream_completion(model, question, system_prompt, stats=None):
+    """逐段产出文本；无 Key 时走 mock，有 Key 时走真实 OpenAI 兼容接口。stats 用于回填 usage。"""
     key = key_for(model)
     if key:
-        async for chunk in _stream_real(model, question, system_prompt, key):
+        async for chunk in _stream_real(model, question, system_prompt, key, stats):
             yield chunk
     else:
         async for chunk in _stream_mock(model):
@@ -31,7 +31,7 @@ async def _stream_mock(model):
         yield text[i : i + 10]
 
 
-async def _stream_real(model, question, system_prompt, key):
+async def _stream_real(model, question, system_prompt, key, stats=None):
     base_url = model.get("baseUrl", "").rstrip("/")
     url = f"{base_url}/chat/completions"
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
@@ -42,6 +42,7 @@ async def _stream_real(model, question, system_prompt, key):
             {"role": "user", "content": question},
         ],
         "stream": True,
+        "stream_options": {"include_usage": True},
     }
     async with httpx.AsyncClient(timeout=120.0) as client:
         async with client.stream("POST", url, json=payload, headers=headers) as resp:
@@ -56,6 +57,8 @@ async def _stream_real(model, question, system_prompt, key):
                     break
                 try:
                     obj = _json.loads(data)
+                    if obj.get("usage") and stats is not None:
+                        stats["usage"] = obj["usage"]
                     delta = obj["choices"][0]["delta"].get("content")
                     if delta:
                         yield delta
