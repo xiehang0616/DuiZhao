@@ -70,7 +70,7 @@ async def events(task_id: str):
         for model_id in task["models"]:
             model = get_model(model_id)
             if not model:
-                yield sse("error", error("unknown_model", f"模型 {model_id} 不存在"))
+                yield sse("error", {"modelId": model_id, "error": {"code": "unknown_model", "message": f"模型 {model_id} 不存在"}})
                 continue
             collected = []
             try:
@@ -91,7 +91,7 @@ async def events(task_id: str):
                     },
                 )
             except Exception as exc:
-                yield sse("error", error("upstream_error", str(exc)))
+                yield sse("error", {"modelId": model_id, "error": {"code": "upstream_error", "message": str(exc)}})
 
     return StreamingResponse(
         gen(),

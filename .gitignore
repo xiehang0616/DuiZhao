@@ -6,6 +6,10 @@ __pycache__/
 venv/
 .pytest_cache/
 
+# 本地数据库
+backend/data/
+*.db
+
 # 环境与密钥
 .env
 .env.local
