@@ -13,7 +13,7 @@ function useReducedMotion(){
  return reduced;
 }
 const Icon=({icon,size=20})=><HugeiconsIcon icon={icon} size={size} strokeWidth={1.8}/>;
-const TYPES=[{key:'text',name:'文本',description:'与模型对话，比较文字回答',icon:TextIcon},{key:'image',name:'图片',description:'描述画面，比较图片效果',icon:Image01Icon},{key:'code',name:'代码',description:'描述需求，比较代码实现',icon:SourceCodeIcon},{key:'video',name:'视频',description:'描述镜头与动作 · 待接入',icon:Video01Icon,disabled:true}];
+const TYPES=[{key:'text',name:'文本',description:'与模型对话，比较文字回答',icon:TextIcon},{key:'image',name:'图片',description:'描述画面，比较图片效果',icon:Image01Icon},{key:'code',name:'代码',description:'描述需求，比较代码实现',icon:SourceCodeIcon},{key:'video',name:'视频',description:'描述镜头与动作',icon:Video01Icon}];
 const ATTACH_TYPES=[{key:'text',name:'文本',description:'粘贴补充材料',icon:TextIcon},{key:'form',name:'表单',description:'PDF、Word、Excel、CSV',icon:File01Icon},{key:'image',name:'图片',description:'PNG、JPG、WebP、GIF',icon:Image01Icon},{key:'video',name:'视频',description:'MP4、MOV、WebM',icon:Video01Icon}];
 
 const MENU_SCALE = 0.7;

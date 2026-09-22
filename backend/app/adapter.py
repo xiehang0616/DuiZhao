@@ -1,7 +1,7 @@
 import asyncio
 import json as _json
 import httpx
-from .endpoints import completion_url
+from .endpoints import completion_url, image_generation_url, video_synthesis_url, task_url
 from .registry import key_for
 
 MOCK_TEXT = (
@@ -46,6 +46,22 @@ def upstream_error(status):
         429: '调用频率或额度受限，请检查余额和限额后重试。',
     }
     return f"上游返回 {status}：" + hints.get(status, '模型服务暂时不可用，请稍后重试。')
+
+
+def upstream_message(resp):
+    """从上游错误响应体提取可读信息；模型未开通时给出可操作提示。"""
+    try:
+        data = resp.json()
+        err = data.get("error") or {}
+        code = err.get("code") or err.get("type") or ""
+        msg = err.get("message") or code or ""
+        if code in ("project_model_unavailable", "model_not_allowed", "model_unavailable", "model_not_found", "model_not_exist"):
+            return "该模型未开通或无调用权限，请先在蚂蚁 MaaS 控制台开通该模型。"
+        if msg:
+            return f"上游返回：{msg}"
+    except Exception:
+        pass
+    return upstream_error(resp.status_code)
 
 
 async def test_model_connection(model):
@@ -109,3 +125,69 @@ async def _stream_real(model, question, system_prompt, key, stats=None):
 
             if not received_content:
                 raise RuntimeError('接口未返回有效的流式回答，请检查服务地址、模型 ID 及 OpenAI Chat Completions 兼容性。')
+
+
+async def generate_image(model, prompt):
+    """同步生成一张图片，返回 {'type':'image','url':...} 或 {'type':'image','b64':...}。"""
+    key = key_for(model)
+    if not key:
+        raise RuntimeError('未配置 API Key，请先在模型配置里填写密钥。')
+    url = image_generation_url(model.get('baseUrl', ''))
+    headers = {'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'}
+    payload = {'model': model.get('modelId'), 'prompt': prompt, 'size': '1024x1024', 'response_format': 'url'}
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            if resp.status_code != 200:
+                raise RuntimeError(upstream_message(resp))
+            data = resp.json()
+            item = (data.get('data') or [{}])[0]
+            if item.get('url'):
+                return {'type': 'image', 'url': item['url'], 'size': payload['size']}
+            if item.get('b64_json'):
+                return {'type': 'image', 'b64': item['b64_json'], 'size': payload['size']}
+            raise RuntimeError('图片接口未返回图片内容，请检查模型 ID 是否支持图片生成。')
+    except httpx.TimeoutException:
+        raise RuntimeError('图片生成超时，请稍后重试。')
+    except httpx.ConnectError:
+        raise RuntimeError('无法连接服务地址，请检查地址是否正确。')
+
+
+async def submit_video(model, prompt, resolution="720P", duration=5):
+    """提交视频生成任务，返回任务 ID。"""
+    key = key_for(model)
+    if not key:
+        raise RuntimeError('未配置 API Key，请先在模型配置里填写密钥。')
+    url = video_synthesis_url(model.get('baseUrl', ''))
+    headers = {'Authorization': f'Bearer {key}', 'Content-Type': 'application/json', 'X-DashScope-Async': 'enable'}
+    payload = {'model': model.get('modelId'), 'input': {'prompt': prompt}, 'parameters': {'resolution': resolution, 'duration': duration}}
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            if resp.status_code != 200:
+                raise RuntimeError(upstream_message(resp))
+            data = resp.json()
+            task_id = (data.get('output') or {}).get('task_id')
+            if not task_id:
+                raise RuntimeError('视频任务提交失败：未返回任务 ID。')
+            return task_id
+    except httpx.TimeoutException:
+        raise RuntimeError('视频任务提交超时，请稍后重试。')
+    except httpx.ConnectError:
+        raise RuntimeError('无法连接服务地址，请检查地址是否正确。')
+
+
+async def query_video(model, task_id):
+    """查询视频任务状态，返回 (task_status, video_url)。"""
+    key = key_for(model)
+    url = task_url(model.get('baseUrl', ''), task_id)
+    headers = {'Authorization': f'Bearer {key}'}
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(url, headers=headers)
+        if resp.status_code != 200:
+            raise RuntimeError(upstream_message(resp))
+        data = resp.json()
+        output = data.get('output') or {}
+        status = output.get('task_status') or output.get('status') or ''
+        video_url = output.get('video_url') or (output.get('results') or {}).get('video_url')
+        return status, video_url

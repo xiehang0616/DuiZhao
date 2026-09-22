@@ -10,11 +10,11 @@ export async function listModels() {
   return res.json();
 }
 
-export async function createCompare({ question, systemPrompt, modelIds }, { signal } = {}) {
+export async function createCompare({ question, systemPrompt, modelIds, modality, videoResolution, videoDuration }, { signal } = {}) {
   const res = await fetch(`${BASE_URL}/api/v1/compare`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, systemPrompt, modelIds, stream: true }),
+    body: JSON.stringify({ question, systemPrompt, modelIds, modality, videoResolution, videoDuration, stream: true }),
     signal,
   });
   if (!res.ok) throw new Error('提交对比失败');

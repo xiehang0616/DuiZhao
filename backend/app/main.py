@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
 from .config import PORT, BACKEND_DIR
 from .schemas import CompareRequest, SettingsRequest
 from .registry import load_models, get_model, key_configured
-from .adapter import stream_completion, test_model_connection
+from .adapter import stream_completion, test_model_connection, generate_image, submit_video, query_video
 from . import db
 from .connection_status import connection_status, record_connection_status
 
@@ -96,6 +96,9 @@ async def compare(req: CompareRequest):
         "question": req.question,
         "systemPrompt": req.systemPrompt,
         "models": req.modelIds,
+        "modality": req.modality,
+        "videoResolution": req.videoResolution,
+        "videoDuration": req.videoDuration,
         "cancelled": False,
     }
     return {"taskId": task_id, "modelIds": req.modelIds}
@@ -117,12 +120,43 @@ async def events(task_id: str):
             start = time.perf_counter()
             first_token_ms = None
             model = None
+            modality = task.get("modality", "text")
             try:
                 if task.get("cancelled"):
                     raise asyncio.CancelledError()
                 model = get_model(model_id)
                 if not model:
                     raise ValueError(f"模型 {model_id} 不存在")
+
+                if modality == "image":
+                    media = await generate_image(model, task["question"])
+                    total_ms = round((time.perf_counter() - start) * 1000, 1)
+                    record_connection_status(model, "connected")
+                    db.save_result(task_id, model_id, json.dumps(media, ensure_ascii=False), None, total_ms, None, None, "done")
+                    outcomes[model_id] = "done"
+                    await queue.put(("done", {"modelId": model_id, "media": media, "source": "api", "totalMs": total_ms}))
+                    return
+
+                if modality == "video":
+                    video_task_id = await submit_video(model, task["question"], task.get("videoResolution", "720P"), task.get("videoDuration", 5))
+                    while True:
+                        if task.get("cancelled"):
+                            raise asyncio.CancelledError()
+                        status, video_url = await query_video(model, video_task_id)
+                        if status in ("SUCCEEDED", "SUCCESS"):
+                            if not video_url:
+                                raise RuntimeError("视频任务完成，但未返回视频地址。")
+                            media = {"type": "video", "url": video_url}
+                            total_ms = round((time.perf_counter() - start) * 1000, 1)
+                            record_connection_status(model, "connected")
+                            db.save_result(task_id, model_id, json.dumps(media, ensure_ascii=False), None, total_ms, None, None, "done")
+                            outcomes[model_id] = "done"
+                            await queue.put(("done", {"modelId": model_id, "media": media, "source": "api", "totalMs": total_ms}))
+                            return
+                        if status in ("FAILED", "CANCELED", "CANCELLED", "UNKNOWN"):
+                            raise RuntimeError("视频生成失败（任务状态：" + status + "）")
+                        await asyncio.sleep(3)
+
                 async for chunk in stream_completion(model, task["question"], task["systemPrompt"], stats):
                     if first_token_ms is None:
                         first_token_ms = round((time.perf_counter() - start) * 1000, 1)

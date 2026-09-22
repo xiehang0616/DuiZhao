@@ -102,3 +102,9 @@
 
 .table-status.connected{color:var(--green)}.table-status.error{color:var(--danger)}
 .table-status.connected i,.table-status.error i{background:currentColor}
+
+/* Real image/video generation results. */
+.media-result{display:flex;align-items:center;justify-content:center;padding:0;background:var(--tone-191815,#191815)}
+.media-result-image{display:block;max-width:100%;max-height:100%;width:auto;height:auto;border-radius:0 0 12px 12px}
+.media-result-video{display:block;max-width:100%;max-height:100%;border-radius:0 0 12px 12px;background:#000}
+.expanded .media-result-image,.expanded .media-result-video{max-width:100%;max-height:70vh;border-radius:0}

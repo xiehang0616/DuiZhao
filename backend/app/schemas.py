@@ -7,6 +7,9 @@ class CompareRequest(BaseModel):
     systemPrompt: str = Field("", max_length=20000)
     modelIds: List[str] = Field(..., min_length=1)
     stream: bool = True
+    modality: str = Field("text")
+    videoResolution: str = Field("720P", pattern=r"^(720P|1080P)$")
+    videoDuration: int = Field(5, ge=1, le=30)
 
 
 from .endpoints import service_address

@@ -1,8 +1,8 @@
 // Independent model buffers; transport completion and visible completion are distinct.
 export function createAnswerStream({modelIds,onUpdate,onSettled,schedule=requestAnimationFrame,cancel=cancelAnimationFrame,random=Math.random,reduced=()=>false}){
- const slots=modelIds.map(id=>({id,chars:[],shown:0,text:'',status:'waiting',terminal:null,next:0,error:null,source:null}));
+ const slots=modelIds.map(id=>({id,chars:[],shown:0,text:'',status:'waiting',terminal:null,next:0,error:null,source:null,media:null}));
  let frame=null,closed=false;
- const snapshots=()=>slots.map(s=>({text:s.text,status:s.status,error:s.error,source:s.source}));
+ const snapshots=()=>slots.map(s=>({text:s.text,status:s.status,error:s.error,source:s.source,media:s.media}));
  function emit(){onUpdate(snapshots());if(slots.every(s=>['done','error','stopped'].includes(s.status))){closed=true;onSettled?.(snapshots())}}
  function wake(){if(!closed&&frame===null)frame=schedule(tick)}
  function tick(time){
@@ -25,7 +25,7 @@ export function createAnswerStream({modelIds,onUpdate,onSettled,schedule=request
  function forModel(id,fn){if(closed)return;slots.filter(s=>s.id===id&&!s.terminal).forEach(fn);wake()}
  return {
   push(id,text){forModel(id,s=>{s.chars.push(...Array.from(text||''))})},
-  end(id,{error=null,fullText,source=null}={}){forModel(id,s=>{if(typeof fullText==='string'&&fullText.startsWith(s.chars.join('')))s.chars=Array.from(fullText);s.terminal=error?'error':'done';s.error=error;s.source=source})},
+  end(id,{error=null,fullText,source=null,media=null}={}){forModel(id,s=>{if(typeof fullText==='string'&&fullText.startsWith(s.chars.join('')))s.chars=Array.from(fullText);s.terminal=error?'error':'done';s.error=error;s.source=source;s.media=media})},
   fail(error){if(closed)return;slots.filter(s=>!s.terminal).forEach(s=>{s.error=error;s.terminal='error'});wake()},
   stop(){if(closed)return;if(frame!==null)cancel(frame);frame=null;slots.forEach(s=>{s.text=s.chars.join('');s.shown=s.chars.length;s.status=s.terminal||'stopped';s.terminal=s.status});emit();closed=true},
   dispose(){closed=true;if(frame!==null)cancel(frame);frame=null},
