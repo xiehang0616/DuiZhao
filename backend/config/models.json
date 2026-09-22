@@ -1,7 +1,27 @@
 {
   "models": [
-    {"id": "mimo-v2.6", "name": "MiMo-V2.6-Pro-UltraSpeed", "provider": "小米", "modelId": "mimo-v2.6-pro-ultraspeed", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
-    {"id": "qwen-plus", "name": "Qwen Plus", "provider": "通义千问", "modelId": "qwen-plus", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
-    {"id": "deepseek-v3", "name": "DeepSeek V3", "provider": "DeepSeek", "modelId": "deepseek-chat", "baseUrl": "https://api.deepseek.com/v1", "keyRef": "KEY_DEEPSEEK"}
+    {"id": "mimo-v2.6-pro-ultraspeed", "name": "MiMo V2.6 Pro UltraSpeed", "provider": "蚂蚁 MaaS", "modelId": "mimo-v2.6-pro-ultraspeed", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "mimo-v2.6-flash", "name": "MiMo V2.6 Flash", "provider": "蚂蚁 MaaS", "modelId": "mimo-v2.6-flash", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "mimo-v2.6-pro", "name": "MiMo V2.6 Pro", "provider": "蚂蚁 MaaS", "modelId": "mimo-v2.6-pro", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "mimo-v2.5-pro", "name": "MiMo V2.5 Pro", "provider": "蚂蚁 MaaS", "modelId": "mimo-v2.5-pro", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "qwen3.8-flash", "name": "Qwen3.8 Flash", "provider": "蚂蚁 MaaS", "modelId": "qwen3.8-flash", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "qwen3.8-max", "name": "Qwen3.8 Max", "provider": "蚂蚁 MaaS", "modelId": "qwen3.8-max", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "qwen3.7-plus", "name": "Qwen3.7 Plus", "provider": "蚂蚁 MaaS", "modelId": "qwen3.7-plus", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "qwen3.7-max", "name": "Qwen3.7 Max", "provider": "蚂蚁 MaaS", "modelId": "qwen3.7-max", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "qwen3.6-plus", "name": "Qwen3.6 Plus", "provider": "蚂蚁 MaaS", "modelId": "qwen3.6-plus", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "qwen3.6-max-preview", "name": "Qwen3.6 Max Preview", "provider": "蚂蚁 MaaS", "modelId": "qwen3.6-max-preview", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "minimax-h3", "name": "MiniMax H3", "provider": "蚂蚁 MaaS", "modelId": "minimax-h3", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "minimax-m3", "name": "MiniMax M3", "provider": "蚂蚁 MaaS", "modelId": "minimax-m3", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "minimax-m2.7", "name": "MiniMax M2.7", "provider": "蚂蚁 MaaS", "modelId": "minimax-m2.7", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "step-3.7-flash", "name": "Step 3.7 Flash", "provider": "蚂蚁 MaaS", "modelId": "step-3.7-flash", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "kimi-k2.7-code", "name": "Kimi K2.7 Code", "provider": "蚂蚁 MaaS", "modelId": "kimi-k2.7-code", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "wan2.7-t2v", "name": "万相 2.7 文生视频", "provider": "蚂蚁 MaaS", "modelId": "wan2.7-t2v", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "wan2.7-i2v", "name": "万相 2.7 图生视频", "provider": "蚂蚁 MaaS", "modelId": "wan2.7-i2v", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "wan2.7-r2v", "name": "万相 2.7 视频重绘", "provider": "蚂蚁 MaaS", "modelId": "wan2.7-r2v", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "deepseek-chat", "name": "DeepSeek V3", "provider": "DeepSeek", "modelId": "deepseek-chat", "baseUrl": "https://api.deepseek.com/v1", "keyRef": "KEY_DEEPSEEK"},
+    {"id": "deepseek-reasoner", "name": "DeepSeek R1", "provider": "DeepSeek", "modelId": "deepseek-reasoner", "baseUrl": "https://api.deepseek.com/v1", "keyRef": "KEY_DEEPSEEK"},
+    {"id": "glm-4", "name": "GLM 4", "provider": "智谱", "modelId": "glm-4", "baseUrl": "https://open.bigmodel.cn/api/paas/v4", "keyRef": "KEY_ZHIPU"},
+    {"id": "moonshot-v1-8k", "name": "Kimi", "provider": "月之暗面", "modelId": "moonshot-v1-8k", "baseUrl": "https://api.moonshot.cn/v1", "keyRef": "KEY_MOONSHOT"},
+    {"id": "doubao-pro-32k", "name": "Doubao Pro", "provider": "豆包", "modelId": "doubao-pro-32k", "baseUrl": "https://ark.cn-beijing.volces.com/api/v3", "keyRef": "KEY_DOUBAO"}
   ]
 }

@@ -32,3 +32,31 @@ export function suggestedApiAddress(value) {
   } catch {}
   return null;
 }
+
+// 预设模型库：选一个即自动带出模型 ID、厂商、能力；后端 models.json 同步维护对应连接。
+// 蚂蚁 MaaS 模型 ID 来自 https://maas.antdigital.com/models（以平台实际清单为准）。
+export const MODEL_PRESETS = [
+  { id:'mimo-v2.6-pro-ultraspeed', name:'MiMo V2.6 Pro UltraSpeed', provider:'蚂蚁 MaaS', capabilities:['text'] },
+  { id:'mimo-v2.6-flash', name:'MiMo V2.6 Flash', provider:'蚂蚁 MaaS', capabilities:['text'] },
+  { id:'mimo-v2.6-pro', name:'MiMo V2.6 Pro', provider:'蚂蚁 MaaS', capabilities:['text'] },
+  { id:'mimo-v2.5-pro', name:'MiMo V2.5 Pro', provider:'蚂蚁 MaaS', capabilities:['text'] },
+  { id:'qwen3.8-flash', name:'Qwen3.8 Flash', provider:'蚂蚁 MaaS', capabilities:['text'] },
+  { id:'qwen3.8-max', name:'Qwen3.8 Max', provider:'蚂蚁 MaaS', capabilities:['text'] },
+  { id:'qwen3.7-plus', name:'Qwen3.7 Plus', provider:'蚂蚁 MaaS', capabilities:['text'] },
+  { id:'qwen3.7-max', name:'Qwen3.7 Max', provider:'蚂蚁 MaaS', capabilities:['text'] },
+  { id:'qwen3.6-plus', name:'Qwen3.6 Plus', provider:'蚂蚁 MaaS', capabilities:['text'] },
+  { id:'qwen3.6-max-preview', name:'Qwen3.6 Max Preview', provider:'蚂蚁 MaaS', capabilities:['text'] },
+  { id:'minimax-h3', name:'MiniMax H3', provider:'蚂蚁 MaaS', capabilities:['text'] },
+  { id:'minimax-m3', name:'MiniMax M3', provider:'蚂蚁 MaaS', capabilities:['text'] },
+  { id:'minimax-m2.7', name:'MiniMax M2.7', provider:'蚂蚁 MaaS', capabilities:['text'] },
+  { id:'step-3.7-flash', name:'Step 3.7 Flash', provider:'蚂蚁 MaaS', capabilities:['text'] },
+  { id:'kimi-k2.7-code', name:'Kimi K2.7 Code', provider:'蚂蚁 MaaS', capabilities:['text','code'] },
+  { id:'wan2.7-t2v', name:'万相 2.7 文生视频', provider:'蚂蚁 MaaS', capabilities:['video'] },
+  { id:'wan2.7-i2v', name:'万相 2.7 图生视频', provider:'蚂蚁 MaaS', capabilities:['video'] },
+  { id:'wan2.7-r2v', name:'万相 2.7 视频重绘', provider:'蚂蚁 MaaS', capabilities:['video'] },
+  { id:'deepseek-chat', name:'DeepSeek V3', provider:'DeepSeek', capabilities:['text'] },
+  { id:'deepseek-reasoner', name:'DeepSeek R1', provider:'DeepSeek', capabilities:['text'] },
+  { id:'glm-4', name:'GLM 4', provider:'智谱', capabilities:['text'] },
+  { id:'moonshot-v1-8k', name:'Kimi', provider:'月之暗面', capabilities:['text'] },
+  { id:'doubao-pro-32k', name:'Doubao Pro', provider:'豆包', capabilities:['text'] }
+];
