@@ -4,8 +4,8 @@ import time
 import uuid
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
-from .config import PORT
+from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
+from .config import PORT, BACKEND_DIR
 from .schemas import CompareRequest
 from .registry import load_models, get_model, key_configured
 from .adapter import stream_completion
@@ -36,6 +36,21 @@ def sse(event, data):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+STATIC_DIR = BACKEND_DIR / "static"
+
+
+@app.get("/")
+@app.get("/arena.html")
+@app.get("/index.html")
+async def serve_arena():
+    return FileResponse(STATIC_DIR / "arena.html")
+
+
+@app.get("/loading-demo.html")
+async def serve_loading_demo():
+    return FileResponse(STATIC_DIR / "loading-demo.html")
 
 
 @app.get("/api/v1/models")

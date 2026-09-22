@@ -10,6 +10,9 @@ venv/
 backend/data/
 *.db
 
+# 构建产物（由 npm run build 生成后拷贝到后端 static）
+backend/static/
+
 # 环境与密钥
 .env
 .env.local
