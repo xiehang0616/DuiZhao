@@ -60,3 +60,15 @@ export const MODEL_PRESETS = [
   { id:'moonshot-v1-8k', name:'Kimi', provider:'月之暗面', capabilities:['text'] },
   { id:'doubao-pro-32k', name:'Doubao Pro', provider:'豆包', capabilities:['text'] }
 ];
+
+const PROVIDER_META = {
+  '蚂蚁 MaaS': { baseUrl:'https://maas-api.antdigital.com/v1', keyRef:'KEY_ANT' },
+  'DeepSeek': { baseUrl:'https://api.deepseek.com/v1', keyRef:'KEY_DEEPSEEK' },
+  '智谱': { baseUrl:'https://open.bigmodel.cn/api/paas/v4', keyRef:'KEY_ZHIPU' },
+  '月之暗面': { baseUrl:'https://api.moonshot.cn/v1', keyRef:'KEY_MOONSHOT' },
+  '豆包': { baseUrl:'https://ark.cn-beijing.volces.com/api/v3', keyRef:'KEY_DOUBAO' },
+};
+
+export const presetMeta = provider => PROVIDER_META[provider] || { baseUrl:'', keyRef:'KEY_CUSTOM' };
+
+export const presetFor = model => MODEL_PRESETS.find(p => p.id===model.apiId && p.name===model.name && p.provider===model.provider && JSON.stringify(p.capabilities)===JSON.stringify(model.capabilities||[])) || null;

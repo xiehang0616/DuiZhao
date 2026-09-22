@@ -75,3 +75,9 @@ export async function putModelConnections(connections) {
   if (!connections.every(item => result.connectionIds?.includes(item.id))) throw new Error('后端未确认保存连接配置');
   return result;
 }
+
+export async function testModelConnection(modelId) {
+  const res = await fetch(`${BASE_URL}/api/v1/connections/${encodeURIComponent(modelId)}/test`, { method: 'POST' });
+  if (!res.ok) throw new Error('测试请求失败');
+  return res.json();
+}

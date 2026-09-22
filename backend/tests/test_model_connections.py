@@ -37,7 +37,7 @@ def test_existing_provider_key_can_be_inherited_without_overwriting_it(monkeypat
     state = {'backend-settings': {'keys': {'KEY_ANT': 'legacy-secret'}}}
     monkeypatch.setattr(db, 'get_kv', lambda key: state.get(key))
     monkeypatch.setattr(db, 'set_kv', lambda key, value: state.update({key: value}))
-    assert client.put('/api/v1/settings', json={'connections': [connection('one', inheritFrom='qwen-plus')]}).status_code == 200
+    assert client.put('/api/v1/settings', json={'connections': [connection('one', inheritFrom='qwen3.8-flash')]}).status_code == 200
     assert registry.key_for(registry.get_model('connection:one')) == 'legacy-secret'
     client.put('/api/v1/settings', json={'connections': [connection('one', apiKey='own-secret')]})
     assert registry.key_for(registry.get_model('connection:one')) == 'own-secret'

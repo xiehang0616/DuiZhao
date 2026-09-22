@@ -16,7 +16,7 @@ def test_models():
 
 
 def test_compare_streams_done():
-    r = client.post("/api/v1/compare", json={"question": "测试问题", "modelIds": ["qwen-plus"]})
+    r = client.post("/api/v1/compare", json={"question": "测试问题", "modelIds": ["qwen3.8-flash"]})
     assert r.status_code == 200
     task_id = r.json()["taskId"]
     with client.stream("GET", f"/api/v1/compare/{task_id}/events") as resp:
@@ -33,7 +33,7 @@ def test_unknown_model_errors():
 
 
 def test_persistence_and_timing():
-    r = client.post("/api/v1/compare", json={"question": "持久化测试", "modelIds": ["qwen-plus"]})
+    r = client.post("/api/v1/compare", json={"question": "持久化测试", "modelIds": ["qwen3.8-flash"]})
     task_id = r.json()["taskId"]
     with client.stream("GET", f"/api/v1/compare/{task_id}/events") as resp:
         body = "".join(resp.iter_text())
@@ -41,7 +41,7 @@ def test_persistence_and_timing():
     data = client.get(f"/api/v1/compare/{task_id}").json()
     assert data["taskId"] == task_id
     assert data["status"] == "completed"
-    assert data["results"][0]["modelId"] == "qwen-plus"
+    assert data["results"][0]["modelId"] == "qwen3.8-flash"
     assert data["results"][0]["fullText"]
     assert isinstance(data["results"][0]["firstTokenMs"], (int, float))
     assert isinstance(data["results"][0]["totalMs"], (int, float))

@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
 from .config import PORT, BACKEND_DIR
 from .schemas import CompareRequest, SettingsRequest
 from .registry import load_models, get_model, key_configured
-from .adapter import stream_completion
+from .adapter import stream_completion, test_model_connection
 from . import db
 from .connection_status import connection_status, record_connection_status
 
@@ -70,6 +70,22 @@ def list_models():
         }
         for m in load_models()
     ]
+
+
+@app.post("/api/v1/connections/{model_id}/test")
+async def test_connection(model_id: str):
+    model = get_model(model_id)
+    if not model:
+        return JSONResponse(status_code=404, content=error("not_found", "模型不存在"))
+    if not key_configured(model):
+        return {"status": "unconfigured", "reason": "未配置 API Key"}
+    try:
+        await test_model_connection(model)
+        record_connection_status(model, "connected")
+        return {"status": "connected"}
+    except Exception as exc:
+        record_connection_status(model, "error")
+        return {"status": "error", "reason": str(exc)}
 
 
 @app.post("/api/v1/compare")

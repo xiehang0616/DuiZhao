@@ -47,6 +47,32 @@ def upstream_error(status):
     }
     return f"上游返回 {status}：" + hints.get(status, '模型服务暂时不可用，请稍后重试。')
 
+
+async def test_model_connection(model):
+    """发起一次最小真实调用（1 token），成功返回 True，失败抛可读异常。"""
+    key = key_for(model)
+    if not key:
+        raise RuntimeError('未配置 API Key，请先在模型配置里填写密钥。')
+    url = completion_url(model.get('baseUrl', ''))
+    headers = {'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'}
+    payload = {
+        'model': model.get('modelId'),
+        'messages': [{'role': 'user', 'content': 'hi'}],
+        'max_tokens': 1,
+        'stream': False,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            if resp.status_code != 200:
+                raise RuntimeError(upstream_error(resp.status_code))
+            return True
+    except httpx.TimeoutException:
+        raise RuntimeError('连接超时，请检查服务地址和网络。')
+    except httpx.ConnectError:
+        raise RuntimeError('无法连接服务地址，请检查地址是否正确。')
+
+
 async def _stream_real(model, question, system_prompt, key, stats=None):
     url = completion_url(model.get("baseUrl", ""))
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
