@@ -1,0 +1,6 @@
+{
+  "models": [
+    {"id": "qwen-plus", "name": "Qwen Plus", "provider": "通义千问", "modelId": "qwen-plus", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
+    {"id": "deepseek-v3", "name": "DeepSeek V3", "provider": "DeepSeek", "modelId": "deepseek-chat", "baseUrl": "https://api.deepseek.com/v1", "keyRef": "KEY_DEEPSEEK"}
+  ]
+}

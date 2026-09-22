@@ -1,0 +1,10 @@
+.code-demo-notice{margin:18px 0 14px;font-size:12px;color:var(--muted);line-height:1.8}
+.code-results{align-items:start}
+.code-result-card{overflow:hidden}
+.code-sample-badge{font-size:10px;color:var(--muted);font-weight:400}
+.code-block-wrap{padding:16px;min-height:180px}
+.code-block{margin:0;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px;line-height:1.7;color:var(--fg);white-space:pre;overflow:auto}
+.code-file-meta{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px;color:var(--muted);font-size:11px;border-top:1px solid var(--border)}
+.code-result-card .answer-card-footer{padding:10px 16px}
+.code-result-card .icon-btn{color:var(--muted)}
+@media(max-width:759px){.code-demo-notice{font-size:11px}.code-block-wrap{padding:12px;min-height:150px}.code-block{font-size:12px}.code-file-meta{padding:10px 12px}}
