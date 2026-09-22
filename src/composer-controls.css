@@ -1,0 +1,28 @@
+/* Shared theme tokens keep the flyouts consistent with both existing appearances. */
+.composer{position:relative;overflow:visible}
+.compare-type-trigger{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 7px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--fg);font:12px var(--sans);white-space:nowrap;transition:background .18s,border-color .18s}
+.compare-type-trigger:hover,.compare-type-trigger.is-open,.attachment-trigger.is-open{background:color-mix(in srgb,var(--fg) 8%,var(--panel))}
+.compare-type-arrow{display:flex;color:var(--muted)}
+.composer-popover{position:fixed;padding:6px;overflow-y:auto;overscroll-behavior:contain;z-index:1050;border:1px solid var(--border);border-radius:14px;background:var(--panel);color:var(--fg);box-shadow:0 12px 35px #0003,0 3px 10px #0002}
+.compare-type-item{width:100%;min-height:72px;display:grid;grid-template-columns:35px minmax(0,1fr) 24px;align-items:center;gap:4px;padding:12px 13px;border:0;border-bottom:1px solid color-mix(in srgb,var(--fg) 9%,transparent);border-radius:0;text-align:left;background:transparent;color:var(--fg);font-family:var(--sans)}
+.compare-type-item:first-child{border-radius:9px 9px 0 0}.compare-type-item:last-child{border-bottom:0;border-radius:0 0 9px 9px}
+.compare-type-item.is-selected{background:color-mix(in srgb,var(--fg) 9%,var(--panel))}
+.compare-type-item:hover:not(:disabled):not(.is-selected){background:color-mix(in srgb,var(--fg) 4%,transparent)}
+.compare-type-icon,.compare-type-check{display:flex;align-items:center}.compare-type-item.is-selected .compare-type-icon,.compare-type-check{color:var(--green)}
+.compare-type-copy{display:flex;flex-direction:column;min-width:0;gap:4px}.compare-type-copy strong{font-size:16px;font-weight:550;line-height:1.35}.compare-type-copy>span{font-size:12px;line-height:1.5;color:var(--muted)}
+.compare-type-item:disabled{opacity:.62;cursor:not-allowed}
+.attachment-menu .compare-type-item{min-height:62px}
+.compare-type-trigger:focus-visible,.attachment-trigger:focus-visible,.composer-popover button:focus-visible,.composer-attachment>button:focus-visible{outline:1px solid color-mix(in srgb,var(--fg) 42%,transparent)!important;outline-offset:-2px;box-shadow:none}
+.attachment-trigger,.attachment-trigger svg{animation:none!important;transform:none!important;transition:none!important}
+.composer.is-dragging-file{border-color:color-mix(in srgb,var(--fg) 42%,var(--border))}
+.composer-drop-layer{position:absolute;inset:7px;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:1px dashed color-mix(in srgb,var(--fg) 36%,transparent);border-radius:10px;background:color-mix(in srgb,var(--panel) 94%,transparent);backdrop-filter:blur(4px);pointer-events:none;color:var(--muted);text-align:center;padding:12px}
+.composer-drop-layer strong{color:var(--fg);font-size:14px;font-weight:500}.composer-drop-layer>span{font-size:12px}
+.composer-attachments{display:flex;flex-wrap:wrap;gap:8px;max-height:160px;overflow:auto;padding:3px 3px 12px}
+.composer-attachment{min-width:0;max-width:230px;height:48px;display:flex;align-items:center;gap:9px;padding:5px 7px;border:1px solid color-mix(in srgb,var(--fg) 14%,transparent);border-radius:9px;background:color-mix(in srgb,var(--fg) 3%,var(--panel))}
+.attachment-preview,.attachment-icon{width:36px;height:36px;flex:none;border-radius:6px;object-fit:cover}.attachment-icon{display:grid;place-items:center;color:var(--muted);background:color-mix(in srgb,var(--fg) 6%,var(--panel))}
+.attachment-info{min-width:0;display:flex;flex:1;flex-direction:column;gap:2px}.attachment-info strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:450}.attachment-info small{font-size:10px;color:var(--muted)}
+.composer-attachment>button{width:28px;height:28px;display:grid;place-items:center;flex:none;border:0;border-radius:6px;background:transparent;color:var(--muted)}.composer-attachment>button:hover{color:var(--fg);background:color-mix(in srgb,var(--fg) 6%,transparent)}
+.attachment-support-note{font-size:11px;line-height:1.6;color:var(--muted);margin:0 3px 10px}
+.question-bubble .composer-attachments{margin-top:10px;padding:0}
+@media(max-width:759px){.compare-type-trigger{padding:0 4px;gap:4px}.composer-attachments{max-height:120px}.composer-attachment{max-width:100%}.composer-drop-layer>span{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.compare-type-trigger{transition:none}}

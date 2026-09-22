@@ -1,6 +1,6 @@
 // Keep legacy single-question records readable while adding conversation turns.
-const turnFields = ({id, question, kind, plans, date, modality='text', compareMode='models', scheme=null, ratings={}, feedback={}, vote=null, notes='', checks=[]}) =>
-  ({id, question, kind, plans, date, modality, compareMode, scheme, ratings, feedback, vote, notes, checks});
+const turnFields = ({id, question, kind, plans, date, modality='text', compareMode='models', scheme=null, ratings={}, feedback={}, vote=null, notes='', checks=[], attachments=[]}) =>
+  ({id, question, kind, plans, date, modality, compareMode, scheme, ratings, feedback, vote, notes, checks, attachments});
 export function asConversation(record) {
   if (!record) return null;
   if (record.turns?.length) return record;

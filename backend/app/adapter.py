@@ -16,6 +16,8 @@ MOCK_TEXT = (
 async def stream_completion(model, question, system_prompt, stats=None):
     """逐段产出文本；无 Key 时走 mock，有 Key 时走真实 OpenAI 兼容接口。stats 用于回填 usage。"""
     key = key_for(model)
+    if stats is not None:
+        stats["source"] = "api" if key else "demo"
     if key:
         async for chunk in _stream_real(model, question, system_prompt, key, stats):
             yield chunk

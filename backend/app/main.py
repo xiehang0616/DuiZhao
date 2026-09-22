@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 import uuid
@@ -72,43 +73,63 @@ async def events(task_id: str):
         return JSONResponse(status_code=404, content=error("not_found", "任务不存在"))
 
     async def gen():
-        for model_id in task["models"]:
-            model = get_model(model_id)
-            if not model:
-                yield sse("error", {"modelId": model_id, "error": {"code": "unknown_model", "message": f"模型 {model_id} 不存在"}})
-                db.save_result(task_id, model_id, "", None, None, None, f"模型 {model_id} 不存在", "error")
-                continue
-            collected = []
-            stats = {}
+        # Each producer runs independently; a slow model never blocks another card.
+        queue = asyncio.Queue()
+        outcomes = {}
+
+        async def produce(model_id):
+            collected, stats = [], {}
             start = time.perf_counter()
             first_token_ms = None
             try:
+                if task.get("cancelled"):
+                    raise asyncio.CancelledError()
+                model = get_model(model_id)
+                if not model:
+                    raise ValueError(f"模型 {model_id} 不存在")
                 async for chunk in stream_completion(model, task["question"], task["systemPrompt"], stats):
-                    if task.get("cancelled"):
-                        yield sse("error", error("cancelled", "任务已取消"))
-                        return
                     if first_token_ms is None:
                         first_token_ms = round((time.perf_counter() - start) * 1000, 1)
                     collected.append(chunk)
-                    yield sse("chunk", {"modelId": model_id, "delta": chunk})
+                    await queue.put(("chunk", {"modelId": model_id, "delta": chunk}))
                 total_ms = round((time.perf_counter() - start) * 1000, 1)
-                usage = stats.get("usage")
-                db.save_result(task_id, model_id, "".join(collected), first_token_ms, total_ms, usage, None, "done")
-                db.set_task_status(task_id, "completed")
-                yield sse(
-                    "done",
-                    {
-                        "modelId": model_id,
-                        "fullText": "".join(collected),
-                        "usage": usage,
-                        "firstTokenMs": first_token_ms,
-                        "totalMs": total_ms,
-                    },
-                )
+                full_text = "".join(collected)
+                db.save_result(task_id, model_id, full_text, first_token_ms, total_ms, stats.get("usage"), None, "done")
+                outcomes[model_id] = "done"
+                await queue.put(("done", {"modelId": model_id, "fullText": full_text, "usage": stats.get("usage"), "firstTokenMs": first_token_ms, "totalMs": total_ms, "source": stats.get("source")}))
+            except asyncio.CancelledError:
+                outcomes[model_id] = "cancelled"
+                db.save_result(task_id, model_id, "".join(collected), first_token_ms, round((time.perf_counter()-start)*1000, 1), stats.get("usage"), "任务已取消", "cancelled")
+                await queue.put(("error", {"modelId": model_id, "error": {"code": "cancelled", "message": "任务已取消"}}))
+                raise
             except Exception as exc:
-                total_ms = round((time.perf_counter() - start) * 1000, 1)
-                db.save_result(task_id, model_id, "".join(collected), first_token_ms, total_ms, None, str(exc), "error")
-                yield sse("error", {"modelId": model_id, "error": {"code": "upstream_error", "message": str(exc)}})
+                outcomes[model_id] = "error"
+                db.save_result(task_id, model_id, "".join(collected), first_token_ms, round((time.perf_counter()-start)*1000, 1), stats.get("usage"), str(exc), "error")
+                await queue.put(("error", {"modelId": model_id, "error": {"code": "upstream_error", "message": str(exc)}}))
+            finally:
+                queue.put_nowait((None, None))
+
+        workers = [asyncio.create_task(produce(model_id)) for model_id in task["models"]]
+        task["workers"] = workers
+        remaining = len(workers)
+        try:
+            while remaining:
+                event, data = await queue.get()
+                if event is None:
+                    remaining -= 1
+                else:
+                    yield sse(event, data)
+            db.set_task_status(task_id, "cancelled" if task.get("cancelled") else "completed" if all(v == "done" for v in outcomes.values()) else "failed")
+        finally:
+            unfinished = any(not worker.done() for worker in workers)
+            for worker in workers:
+                if not worker.done():
+                    worker.cancel()
+            await asyncio.gather(*workers, return_exceptions=True)
+            task.pop("workers", None)
+            if unfinished:
+                task["cancelled"] = True
+                db.set_task_status(task_id, "cancelled")
 
     return StreamingResponse(
         gen(),
@@ -123,6 +144,8 @@ async def cancel(task_id: str):
     if not task:
         return JSONResponse(status_code=404, content=error("not_found", "任务不存在"))
     task["cancelled"] = True
+    for worker in task.get("workers", []):
+        worker.cancel()
     db.set_task_status(task_id, "cancelled")
     return {"status": "cancelled"}
 

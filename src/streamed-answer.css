@@ -1,0 +1,12 @@
+.streamed-answer{overflow-wrap:anywhere;min-height:1.75em}
+.streamed-answer>:first-child{margin-top:0}.streamed-answer>:last-child{margin-bottom:0}
+.streamed-answer pre{overflow:auto;padding:12px;border:1px solid var(--border);border-radius:7px;background:var(--panel);font:12px/1.7 ui-monospace,monospace;white-space:pre;overflow-wrap:normal}
+.streamed-answer code{font-family:ui-monospace,monospace;font-size:.9em}.streamed-answer :not(pre)>code{background:var(--panel);padding:2px 4px;border-radius:3px}
+.streamed-answer table{display:block;overflow:auto;border-collapse:collapse;font-size:13px;max-width:100%}.streamed-answer th,.streamed-answer td{border:1px solid var(--border);padding:7px 10px;min-width:80px}
+.streamed-answer blockquote{margin:15px 0;padding:0 12px;border-left:1px solid var(--border);color:var(--muted)}
+.streamed-answer ul,.streamed-answer ol{padding-left:24px}.streamed-answer h1{font-size:22px}.stream-image-reference{color:var(--muted)}
+.stream-cursor{display:inline-block;width:4px;height:1em;margin-left:3px;vertical-align:-2px;border-radius:2px;background:currentColor;opacity:.45;animation:stream-cursor .9s ease-in-out infinite}
+@keyframes stream-cursor{0%,100%{opacity:.2}50%{opacity:.65}}
+.stream-error,.stream-status{color:var(--muted);font-size:12px;line-height:1.7;margin-top:15px}
+.stream-follow{position:sticky;bottom:4px;display:block;margin:12px auto 0;padding:5px 10px;background:var(--panel);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--fg)}
+@media(prefers-reduced-motion:reduce){.stream-cursor{animation:none;opacity:.4}}
