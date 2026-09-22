@@ -45,3 +45,9 @@ def test_persistence_and_timing():
     assert data["results"][0]["fullText"]
     assert isinstance(data["results"][0]["firstTokenMs"], (int, float))
     assert isinstance(data["results"][0]["totalMs"], (int, float))
+
+
+def test_store_kv():
+    client.put("/api/v1/store/test-key", json={"value": [1, 2, 3]})
+    assert client.get("/api/v1/store/test-key").json()["value"] == [1, 2, 3]
+    assert client.get("/api/v1/store/nonexistent").status_code == 404

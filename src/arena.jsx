@@ -18,7 +18,7 @@ import {DEFAULT_SCHEMES,snapshotScheme,c2cPlans,csvText} from './c2c.mjs';
 import {C2CConnection,C2CSchemes,ResultReview} from './c2c-ui.jsx';
 import Evaluations from './evaluations-ui.jsx';
 import {asConversation,appendConversationTurn,updateConversationTurn,sortConversations,renameConversation} from './conversations.mjs';
-import {createCompare,streamCompare,cancelCompare} from './api.mjs';
+import {createCompare,streamCompare,cancelCompare,getStore,putStore} from './api.mjs';
 
 const DEFAULT_PROMPT='你是一位资深产品经理。请覆盖正常流程、异常情况和验收标准，明确需要业务方补充的信息。';
 const TEMPLATES=[
@@ -88,6 +88,7 @@ function Workspace({appearance,onAppearanceChange}){
  useEffect(()=>()=>clearInterval(timer.current),[]);
  useEffect(()=>{if(!footer.current)return;const o=new ResizeObserver(([e])=>setComposerH(e.contentRect.height+28));o.observe(footer.current);return()=>o.disconnect()},[current,screen]);
  useEffect(()=>{const f=e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();setPanel('search')}if(e.key==='Escape')setSidebar(false)};window.addEventListener('keydown',f);return()=>window.removeEventListener('keydown',f)},[]);
+ useEffect(()=>{(async()=>{try{const remote=await getStore('arena-records-v2');if(remote===null){putStore('arena-records-v2',read('arena-records-v2',initialRecords)).catch(()=>{})}else{setRecords(remote.map(asConversation));try{localStorage.setItem('arena-records-v2',JSON.stringify(remote))}catch{}}}catch{}})()},[]);
  const screenRef=useRef(screen);screenRef.current=screen;
  const navigateScreen=next=>{screenRef.current=next;setScreen(next);location.hash=next==='arena'?'':next};
  useEffect(()=>{const update=()=>{const next=location.hash==='#evaluations'?'evaluations':location.hash==='#library'?'library':location.hash==='#models'?'models':'arena';if(next===screenRef.current)return;setScreen(next);setPanel(null);setSidebar(false);window.scrollTo(0,0)};window.addEventListener('hashchange',update);return()=>window.removeEventListener('hashchange',update)},[]);
@@ -95,8 +96,8 @@ function Workspace({appearance,onAppearanceChange}){
  const showEvaluations=()=>{navigateScreen('evaluations');setPanel(null);setSidebar(false);window.scrollTo(0,0)};
  const saveEvaluationTasks=next=>{try{localStorage.setItem('arena-evaluation-tasks-v1',JSON.stringify(next));setEvaluationTasks(next);return true}catch{message.error('测评保存失败：浏览器存储空间不足，请保留当前内容后重试。');return false}};
  const saveLibrary=next=>{try{localStorage.setItem('arena-prompt-library-v1',JSON.stringify(next));setLibrary(next);return true}catch{message.error('保存失败：浏览器存储空间不足，请保留当前内容后重试。');return false}};
- const persist=r=>{setRecords(r);store('arena-records-v2',r)};
- const commitConversation=r=>{setCurrent(r);setRecords(previous=>{const next=[r,...previous.filter(x=>x.id!==r.id)];store('arena-records-v2',next);return next})};
+ const persist=r=>{setRecords(r);store('arena-records-v2',r);putStore('arena-records-v2',r).catch(()=>{})};
+ const commitConversation=r=>{setCurrent(r);setRecords(previous=>{const next=[r,...previous.filter(x=>x.id!==r.id)];store('arena-records-v2',next);putStore('arena-records-v2',next).catch(()=>{});return next})};
  const patchTurn=(id,patch)=>commitConversation(updateConversationTurn(current,id,patch));
  const saveCurrent=r=>patchTurn(current.turns.at(-1).id,{vote:r.vote,notes:r.notes,checks:r.checks});
  const saveSelection=ids=>{setSelected(ids);store('arena-selected-v2',ids)};

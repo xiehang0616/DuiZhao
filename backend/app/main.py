@@ -134,6 +134,20 @@ async def get_task(task_id: str):
     return data
 
 
+@app.get("/api/v1/store/{key}")
+async def get_store(key: str):
+    data = db.get_kv(key)
+    if data is None:
+        return JSONResponse(status_code=404, content=error("not_found", "键不存在"))
+    return {"key": key, "value": data}
+
+
+@app.put("/api/v1/store/{key}")
+async def put_store(key: str, body: dict):
+    db.set_kv(key, body.get("value"))
+    return {"ok": True}
+
+
 if __name__ == "__main__":
     import uvicorn
 

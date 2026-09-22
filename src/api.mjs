@@ -22,6 +22,22 @@ export async function cancelCompare(taskId) {
   await fetch(`${BASE_URL}/api/v1/compare/${taskId}/cancel`, { method: 'POST' });
 }
 
+export async function getStore(key) {
+  const res = await fetch(`${BASE_URL}/api/v1/store/${encodeURIComponent(key)}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error('读取失败');
+  const data = await res.json();
+  return data.value;
+}
+
+export async function putStore(key, value) {
+  await fetch(`${BASE_URL}/api/v1/store/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ value }),
+  });
+}
+
 function parseSseBlock(block) {
   let event = 'message';
   let data = '';

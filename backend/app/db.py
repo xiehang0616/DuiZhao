@@ -36,6 +36,10 @@ def init_db():
                 status TEXT DEFAULT 'done',
                 PRIMARY KEY (task_id, model_id)
             );
+            CREATE TABLE IF NOT EXISTS kv (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
             """
         )
         conn.commit()
@@ -122,5 +126,26 @@ def get_task(task_id):
                 for r in rows
             ],
         }
+    finally:
+        conn.close()
+
+
+def get_kv(key):
+    conn = _conn()
+    try:
+        row = conn.execute("SELECT value FROM kv WHERE key=?", (key,)).fetchone()
+        return json.loads(row["value"]) if row else None
+    finally:
+        conn.close()
+
+
+def set_kv(key, value):
+    conn = _conn()
+    try:
+        conn.execute(
+            "INSERT INTO kv (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (key, json.dumps(value)),
+        )
+        conn.commit()
     finally:
         conn.close()
