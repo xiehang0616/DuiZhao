@@ -94,3 +94,8 @@
 /* Loading copy shares the body typography and padding at every breakpoint. */
 .answer-loading-message{font-size:inherit;font-weight:400;line-height:inherit;background-image:linear-gradient(110deg,var(--muted) 30%,var(--fg) 48%,var(--fg) 52%,var(--muted) 70%)}
 @media(prefers-reduced-motion:reduce){.answer-loading-message{animation:none;background:none;color:var(--muted)}}
+
+.models-page.models-page-empty{display:flex;align-items:center;justify-content:center;min-height:calc(100dvh - 133px);padding:32px 20px}
+.model-empty-state{text-align:center;padding:40px 0}
+.model-empty-state p{margin:0 0 20px;font-size:18px;color:var(--muted)}
+.model-empty-state .ant-btn{min-width:112px}
