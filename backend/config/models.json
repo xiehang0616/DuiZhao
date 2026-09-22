@@ -1,5 +1,6 @@
 {
   "models": [
+    {"id": "mimo-v2.6", "name": "MiMo-V2.6-Pro-UltraSpeed", "provider": "小米", "modelId": "mimo-v2.6-pro-ultraspeed", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
     {"id": "qwen-plus", "name": "Qwen Plus", "provider": "通义千问", "modelId": "qwen-plus", "baseUrl": "https://maas-api.antdigital.com/v1", "keyRef": "KEY_ANT"},
     {"id": "deepseek-v3", "name": "DeepSeek V3", "provider": "DeepSeek", "modelId": "deepseek-chat", "baseUrl": "https://api.deepseek.com/v1", "keyRef": "KEY_DEEPSEEK"}
   ]
