@@ -1,6 +1,8 @@
 // 集中式 API 层：前端只通过这里访问后端，不散落 fetch。
-// BASE_URL 在真实联调/部署时按环境替换。
-const BASE_URL = 'http://127.0.0.1:8000';
+// 后端地址：本地默认 127.0.0.1:8000；线上可用 window.__BACKEND_URL__ 指定，或留空走同域代理。
+const BASE_URL =
+  (typeof window !== 'undefined' && window.__BACKEND_URL__) ||
+  (location.hostname === '127.0.0.1' || location.hostname === 'localhost' ? 'http://127.0.0.1:8000' : '');
 
 export async function listModels() {
   const res = await fetch(`${BASE_URL}/api/v1/models`);
@@ -36,6 +38,22 @@ export async function putStore(key, value) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ value }),
   });
+}
+
+export async function getSettings() {
+  const res = await fetch(`${BASE_URL}/api/v1/settings`);
+  if (!res.ok) throw new Error('读取设置失败');
+  return res.json();
+}
+
+export async function putSettings(keys) {
+  const res = await fetch(`${BASE_URL}/api/v1/settings`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keys }),
+  });
+  if (!res.ok) throw new Error('保存失败');
+  return res.json();
 }
 
 function parseSseBlock(block) {

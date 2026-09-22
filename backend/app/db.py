@@ -1,8 +1,18 @@
 import json
 import sqlite3
-from .config import BACKEND_DIR
+from pathlib import Path
+from .config import BACKEND_DIR, env
 
-DB_PATH = BACKEND_DIR / "data" / "duizhao.db"
+
+def _db_path():
+    url = env("DATABASE_URL")
+    if url and url.startswith("sqlite:///"):
+        path = url[len("sqlite:///"):]
+        return Path(path) if path.startswith("/") else BACKEND_DIR / path
+    return BACKEND_DIR / "data" / "duizhao.db"
+
+
+DB_PATH = _db_path()
 
 
 def _conn():

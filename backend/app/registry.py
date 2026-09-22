@@ -1,5 +1,6 @@
 import json
 from .config import BACKEND_DIR, env
+from . import db
 
 CONFIG_PATH = BACKEND_DIR / "config" / "models.json"
 
@@ -18,7 +19,16 @@ def get_model(model_id):
 
 def key_for(model):
     ref = model.get("keyRef")
-    return env(ref) if ref else ""
+    if not ref:
+        return ""
+    # 优先读页面保存的密钥，其次读环境变量
+    try:
+        saved = (db.get_kv("backend-settings") or {}).get("keys") or {}
+        if saved.get(ref):
+            return saved[ref]
+    except Exception:
+        pass
+    return env(ref)
 
 
 def key_configured(model):

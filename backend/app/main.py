@@ -45,6 +45,7 @@ def list_models():
             "name": m["name"],
             "provider": m["provider"],
             "modelId": m["modelId"],
+            "keyRef": m.get("keyRef"),
             "keyConfigured": key_configured(m),
         }
         for m in load_models()
@@ -146,6 +147,30 @@ async def get_store(key: str):
 async def put_store(key: str, body: dict):
     db.set_kv(key, body.get("value"))
     return {"ok": True}
+
+
+@app.get("/api/v1/settings")
+async def get_settings():
+    keys = {}
+    for m in load_models():
+        ref = m.get("keyRef")
+        if ref:
+            keys[ref] = key_configured(m)
+    return {"keys": keys}
+
+
+@app.put("/api/v1/settings")
+async def put_settings(body: dict):
+    incoming = body.get("keys") or {}
+    data = db.get_kv("backend-settings") or {}
+    merged = dict(data.get("keys") or {})
+    for k, v in incoming.items():
+        if v:
+            merged[k] = str(v)
+        else:
+            merged.pop(k, None)
+    db.set_kv("backend-settings", {"keys": merged})
+    return {"ok": True, "configured": {k: bool(v) for k, v in merged.items()}}
 
 
 if __name__ == "__main__":
