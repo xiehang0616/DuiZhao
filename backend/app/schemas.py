@@ -9,7 +9,7 @@ class CompareRequest(BaseModel):
     stream: bool = True
 
 
-from urllib.parse import urlsplit
+from .endpoints import service_address
 from pydantic import field_validator
 
 
@@ -34,11 +34,7 @@ class ModelConnection(BaseModel):
     @field_validator("baseUrl")
     @classmethod
     def service_url(cls, value):
-        value = value.strip().rstrip("/")
-        parsed = urlsplit(value)
-        if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
-            raise ValueError("服务地址必须为不包含凭据、查询或片段的 HTTP(S) 地址")
-        return value
+        return service_address(value)
 
 
 class SettingsRequest(BaseModel):

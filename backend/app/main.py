@@ -10,6 +10,7 @@ from .schemas import CompareRequest, SettingsRequest
 from .registry import load_models, get_model, key_configured
 from .adapter import stream_completion
 from . import db
+from .connection_status import connection_status, record_connection_status
 
 app = FastAPI(title="对照 DUIZHAO 后端", version="0.1.0")
 db.init_db()
@@ -65,6 +66,7 @@ def list_models():
             "baseUrl": m.get("baseUrl", ""),
             "connectionName": m.get("connectionName", ""),
             "keyConfigured": key_configured(m),
+            "connectionStatus": connection_status(m),
         }
         for m in load_models()
     ]
@@ -98,6 +100,7 @@ async def events(task_id: str):
             collected, stats = [], {}
             start = time.perf_counter()
             first_token_ms = None
+            model = None
             try:
                 if task.get("cancelled"):
                     raise asyncio.CancelledError()
@@ -111,6 +114,8 @@ async def events(task_id: str):
                     await queue.put(("chunk", {"modelId": model_id, "delta": chunk}))
                 total_ms = round((time.perf_counter() - start) * 1000, 1)
                 full_text = "".join(collected)
+                if stats.get("source") == "api":
+                    record_connection_status(model, "connected")
                 db.save_result(task_id, model_id, full_text, first_token_ms, total_ms, stats.get("usage"), None, "done")
                 outcomes[model_id] = "done"
                 await queue.put(("done", {"modelId": model_id, "fullText": full_text, "usage": stats.get("usage"), "firstTokenMs": first_token_ms, "totalMs": total_ms, "source": stats.get("source")}))
@@ -120,6 +125,8 @@ async def events(task_id: str):
                 await queue.put(("error", {"modelId": model_id, "error": {"code": "cancelled", "message": "任务已取消"}}))
                 raise
             except Exception as exc:
+                if model and stats.get("source") == "api":
+                    record_connection_status(model, "error")
                 outcomes[model_id] = "error"
                 db.save_result(task_id, model_id, "".join(collected), first_token_ms, round((time.perf_counter()-start)*1000, 1), stats.get("usage"), str(exc), "error")
                 await queue.put(("error", {"modelId": model_id, "error": {"code": "upstream_error", "message": str(exc)}}))
@@ -177,7 +184,7 @@ async def get_task(task_id: str):
 
 @app.get("/api/v1/store/{key}")
 async def get_store(key: str):
-    if key == "backend-settings":
+    if key in {"backend-settings", "model-connection-status"}:
         return JSONResponse(status_code=403, content=error("private", "私有设置不可直接读取"))
     data = db.get_kv(key)
     if data is None:
@@ -187,7 +194,7 @@ async def get_store(key: str):
 
 @app.put("/api/v1/store/{key}")
 async def put_store(key: str, body: dict):
-    if key == "backend-settings":
+    if key in {"backend-settings", "model-connection-status"}:
         return JSONResponse(status_code=403, content=error("private", "私有设置不可直接写入"))
     db.set_kv(key, body.get("value"))
     return {"ok": True}

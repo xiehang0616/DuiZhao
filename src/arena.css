@@ -99,3 +99,6 @@
 .model-empty-state{text-align:center;padding:40px 0}
 .model-empty-state p{margin:0 0 20px;font-size:18px;color:var(--muted)}
 .model-empty-state .ant-btn{min-width:112px}
+
+.table-status.connected{color:var(--green)}.table-status.error{color:var(--danger)}
+.table-status.connected i,.table-status.error i{background:currentColor}

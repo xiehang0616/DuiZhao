@@ -15,7 +15,7 @@ export default function StreamedAnswer({text='',status,error,loading}){
  return <div ref={root} className="streamed-answer" aria-busy={streaming}>
   {!text&&streaming?loading:<ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={{img:({alt})=><span className="stream-image-reference">[图片：{alt||'图片引用'}]</span>,a:({children,href})=><a href={href} target="_blank" rel="noopener noreferrer">{children}</a>}}>{text}</ReactMarkdown>}
   {text&&streaming&&<span className="stream-cursor" aria-hidden="true"/>}
-  {error&&<p className="stream-error" role="status">{error} · 已保留收到的内容，可重新发送问题。</p>}
+  {error&&<p className="stream-error" role="status">{error}{text?' · 已保留收到的内容，修正配置后可重新发送。':' · 修正配置后可重新发送问题。'}</p>}
   {status==='stopped'&&<p className="stream-status">已停止，保留已生成内容。</p>}
   {streaming&&!following&&<button className="stream-follow" onClick={jump}>跟随最新内容 ↓</button>}
  </div>;

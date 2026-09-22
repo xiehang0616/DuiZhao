@@ -1,6 +1,7 @@
 import asyncio
 import json as _json
 import httpx
+from .endpoints import completion_url
 from .registry import key_for
 
 MOCK_TEXT = (
@@ -33,9 +34,21 @@ async def _stream_mock(model):
         yield text[i : i + 10]
 
 
+
+
+def upstream_error(status):
+    hints = {
+        400: '请检查模型 ID 和请求参数，模型 ID 应填写服务商提供的接口标识。',
+        401: 'API Key 无效或已过期，请检查对应模型的密钥。',
+        403: '当前密钥无权调用此模型，请检查模型权限。',
+        404: '请检查服务地址和模型 ID，接口或模型不存在。',
+        405: '当前地址不支持 POST，请检查服务地址是否为模型 API，而不是网页或控制台地址。支持填写 API 基础地址或完整的 /chat/completions 地址。',
+        429: '调用频率或额度受限，请检查余额和限额后重试。',
+    }
+    return f"上游返回 {status}：" + hints.get(status, '模型服务暂时不可用，请稍后重试。')
+
 async def _stream_real(model, question, system_prompt, key, stats=None):
-    base_url = model.get("baseUrl", "").rstrip("/")
-    url = f"{base_url}/chat/completions"
+    url = completion_url(model.get("baseUrl", ""))
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
     payload = {
         "model": model.get("modelId"),
@@ -49,8 +62,8 @@ async def _stream_real(model, question, system_prompt, key, stats=None):
     async with httpx.AsyncClient(timeout=120.0) as client:
         async with client.stream("POST", url, json=payload, headers=headers) as resp:
             if resp.status_code != 200:
-                body = (await resp.aread()).decode("utf-8", "ignore")[:200]
-                raise RuntimeError(f"上游返回 {resp.status_code}: {body}")
+                raise RuntimeError(upstream_error(resp.status_code))
+            received_content = False
             async for line in resp.aiter_lines():
                 if not line.startswith("data:"):
                     continue
@@ -63,6 +76,10 @@ async def _stream_real(model, question, system_prompt, key, stats=None):
                         stats["usage"] = obj["usage"]
                     delta = obj["choices"][0]["delta"].get("content")
                     if delta:
+                        received_content = True
                         yield delta
                 except Exception:
                     continue
+
+            if not received_content:
+                raise RuntimeError('接口未返回有效的流式回答，请检查服务地址、模型 ID 及 OpenAI Chat Completions 兼容性。')

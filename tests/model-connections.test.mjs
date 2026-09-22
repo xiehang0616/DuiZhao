@@ -11,3 +11,20 @@ test('saved connections override presets without copying or exposing API keys',(
  assert.equal(rows[0].connectionName,'私有服务');assert.equal(rows[0].name,'新名称');assert.equal(rows[0].modelId,'custom');assert.equal(rows[0].apiKey,undefined);
  assert.deepEqual(modelConnections([],[]),[]);
 });
+
+import {modelConnectionStatus,suggestedApiAddress} from '../src/model-connections.mjs';
+test('connection status distinguishes saved keys, successful calls, errors and unavailable metadata',()=>{
+ const m={id:'a',apiId:'upstream'};
+ assert.equal(modelConnectionStatus(m,null).label,'读取中');
+ assert.equal(modelConnectionStatus(m,[],true).label,'状态未知');
+ assert.equal(modelConnectionStatus(m,[]).label,'未配置密钥');
+ for(const [connectionStatus,label] of [['configured','已配置 · 待验证'],['connected','已连通'],['error','调用失败']]){
+  assert.equal(modelConnectionStatus(m,[{id:'connection:a',keyConfigured:true,connectionStatus}]).label,label);
+ }
+});
+test('console URLs get exact provider API suggestions, valid APIs stay unchanged',()=>{
+ assert.equal(suggestedApiAddress('https://platform.deepseek.com/api_keys'),'https://api.deepseek.com');
+ assert.equal(suggestedApiAddress('https://maas.antdigital.com/console/apiKey'),'https://maas-api.antdigital.com/v1');
+ assert.equal(suggestedApiAddress('https://maas-api.antdigital.com/v1'),null);
+ assert.equal(suggestedApiAddress('not-a-url'),null);
+});
