@@ -1,4 +1,4 @@
-import React,{useState,useRef,useEffect} from 'react';
+import React,{useState,useRef,useEffect,useMemo} from 'react';
 import {createRoot} from 'react-dom/client';
 import {ConfigProvider,App as AntApp,theme,Button,Input,Select,Drawer,Form,Checkbox,Table,Segmented,Dropdown,Modal} from 'antd';
 import {ProCard} from '@ant-design/pro-components';
@@ -6,6 +6,8 @@ import {ArrowLeftRightIcon,SearchIcon,CopyIcon,SettingsIcon,PlusIcon,ArrowRightI
 import 'antd/dist/reset.css';
 import './arena.css';
 import StreamedAnswer from './streamed-answer.jsx';
+import ModelConnections from './model-connections.jsx';
+import {connectionId} from './model-connections.mjs';
 import {initialModelState} from './model-state.mjs';
 import {createAnswerStream,answerMarkdown} from './answer-stream.mjs';
 import {CompareTypeMenu,AttachMenu,ComposerSurface,AttachmentList,useAttachments} from './composer-controls.jsx';
@@ -23,7 +25,7 @@ import {DEFAULT_SCHEMES,snapshotScheme,c2cPlans,csvText} from './c2c.mjs';
 import {C2CConnection,C2CSchemes,ResultReview} from './c2c-ui.jsx';
 import Evaluations from './evaluations-ui.jsx';
 import {asConversation,appendConversationTurn,updateConversationTurn,sortConversations,renameConversation} from './conversations.mjs';
-import {createCompare,streamCompare,cancelCompare,getStore,putStore,getSettings,putSettings,listModels} from './api.mjs';
+import {createCompare,streamCompare,cancelCompare,getStore,putStore} from './api.mjs';
 
 const DEFAULT_PROMPT='你是一位资深产品经理。请覆盖正常流程、异常情况和验收标准，明确需要业务方补充的信息。';
 const TEMPLATES=[
@@ -80,12 +82,12 @@ function Workspace({appearance,onAppearanceChange}){
  const [modality,setModality]=useState(()=>new URLSearchParams(location.search).get('demo')==='image'?'image':'text'),[imageCount,setImageCount]=useState(2);
  const [draft,setDraft]=useState(()=>new URLSearchParams(location.search).get('demo')==='image'?IMAGE_PROMPT:new URLSearchParams(location.search).get('demo')==='c2c'?TEMPLATES[0].question:''),[kind,setKind]=useState('refund'),[current,setCurrent]=useState(()=>streamingPreview?asConversation({...initialRecords[1],id:'stream-preview',plans:initialRecords[1].plans.map(p=>({...p,text:'',status:'waiting'}))}):loadingPreview?asConversation({...initialRecords[0],id:'loading-preview'}):null),[busy,setBusy]=useState(loadingPreview),[finished,setFinished]=useState(0);
  const [catalog,setCatalog]=useState(()=>normalizeModels(initialModelState(read).catalog)),[selected,setSelected]=useState(()=>initialModelState(read).selected),[prompt,setPrompt]=useState(()=>read('arena-prompt-v2',DEFAULT_PROMPT));
+ const selectedModels=useMemo(()=>selected.map(id=>catalog.find(m=>m.id===id)).filter(Boolean),[selected,catalog]);
  const [library,setLibrary]=useState(()=>read('arena-prompt-library-v1',TEMPLATES.map((t,i)=>({...t,id:'template-'+i,icon:['file','compare','message','settings','check','book'][i],systemPrompt:DEFAULT_PROMPT,home:true}))));
  const [evaluationTasks,setEvaluationTasks]=useState(()=>read('arena-evaluation-tasks-v1',[])),[evaluationSeed,setEvaluationSeed]=useState(null),[evalDraft,setEvalDraft]=useState(null),[evalWithContext,setEvalWithContext]=useState(false);
  const [records,setRecords]=useState(()=>read('arena-records-v2',initialRecords).map(asConversation));
  const [renameTarget,setRenameTarget]=useState(null),[topicTitle,setTopicTitle]=useState('');
  const [panel,setPanel]=useState(null),[search,setSearch]=useState(''),[modelQuery,setModelQuery]=useState(''),[capFilter,setCapFilter]=useState('全部'),[view,setView]=useState('all'),[notes,setNotes]=useState(''),[expanded,setExpanded]=useState(null),[editing,setEditing]=useState(null),[exporting,setExporting]=useState(false);
- const [connection,setConnection]=useState('我的蚂蚁 MaaS'),[url,setUrl]=useState('https://maas-api.antdigital.com/v1');
  const [compareMode,setCompareMode]=useState(()=>new URLSearchParams(location.search).get('demo')==='c2c'?'c2c':'models'),[modelTab,setModelTab]=useState('models'),[connectionTab,setConnectionTab]=useState('maas');
  const [schemes,setSchemes]=useState(()=>read('arena-c2c-schemes',DEFAULT_SCHEMES)),[schemeId,setSchemeId]=useState(()=>read('arena-c2c-selected','c2c-small')),[c2cConnection,setC2cConnection]=useState(()=>read('arena-c2c-connection',{address:''}));
  const activeScheme=schemes.find(s=>s.id===schemeId)||schemes[0],isC2C=compareMode==='c2c'&&modality==='text';
@@ -95,11 +97,8 @@ function Workspace({appearance,onAppearanceChange}){
  const useScheme=id=>{selectScheme(id);setCompareMode('c2c');setModality('text');returnArena();message.success('已选择协作方案，可开始演示对比')};
  const attachments=useAttachments();
  const currentRef=useRef(current);currentRef.current=current;
- const input=useRef(null),footer=useRef(null),latestTurn=useRef(null),activeStream=useRef(null);const [composerH,setComposerH]=useState(210),[backendKeys,setBackendKeys]=useState([]),[keyDraft,setKeyDraft]=useState({}),[savingKeys,setSavingKeys]=useState(false);
+ const input=useRef(null),footer=useRef(null),latestTurn=useRef(null),activeStream=useRef(null);const [composerH,setComposerH]=useState(210);
  const store=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value))}catch{message.warning('浏览器无法保存，当前页面仍可使用')}};
-const loadBackendKeys=async()=>{try{const models=await listModels();const seen=new Map();for(const m of models){if(m.keyRef&&!seen.has(m.keyRef))seen.set(m.keyRef,{ref:m.keyRef,label:m.provider,configured:m.keyConfigured})}setBackendKeys([...seen.values()])}catch{}};
-const saveKeys=async()=>{setSavingKeys(true);try{const res=await putSettings(keyDraft);const configured=res.configured||{};setBackendKeys(ks=>ks.map(k=>({...k,configured:!!configured[k.ref]})));setKeyDraft({});message.success('密钥已保存')}catch{message.error('保存失败，请确认后端已启动')}finally{setSavingKeys(false)}};
-useEffect(()=>{if(panel==='settings')loadBackendKeys()},[panel]);
  useEffect(()=>{if(streamingPreview)startAnswers(currentRef.current,{demo:true});return()=>disposeStream()},[]);
  useEffect(()=>{if(!footer.current)return;const o=new ResizeObserver(([e])=>setComposerH(e.contentRect.height+28));o.observe(footer.current);return()=>o.disconnect()},[!!current,screen]);
  useEffect(()=>{const f=e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();setPanel('search')}if(e.key==='Escape')setSidebar(false)};window.addEventListener('keydown',f);return()=>window.removeEventListener('keydown',f)},[]);
@@ -156,7 +155,7 @@ useEffect(()=>{if(panel==='settings')loadBackendKeys()},[panel]);
  }
  function stopAnswers(){const active=activeStream.current;if(!active)return;active.controller.stop();active.abort.abort();active.timers.forEach(clearTimeout);if(active.taskId)cancelCompare(active.taskId).catch(()=>{});activeStream.current=null}
  function startAnswers(conversation,{demo=false}={}){
-  disposeStream();const turn=conversation.turns.at(-1),modelIds=turn.plans.map(p=>p.apiId||p.id||p.model);
+  disposeStream();const turn=conversation.turns.at(-1),modelIds=turn.plans.map(p=>p.connectionId||p.apiId||p.id||p.model);
   const active={abort:new AbortController(),timers:[],taskId:null};activeStream.current=active;setBusy(true);
   const valid=()=>activeStream.current===active&&currentRef.current?.id===conversation.id;
   active.controller=createAnswerStream({modelIds,reduced:()=>document.hidden||window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -241,7 +240,7 @@ useEffect(()=>{if(panel==='settings')loadBackendKeys()},[panel]);
   <Drawer open={!!panel} onClose={()=>setPanel(null)} title={{settings:'连接设置',search:'搜索对比记录',evaluation:'评价与备注',prompt:'共同系统提示词',evalTurn:'基于此轮创建测评任务',modelEdit:editing&&catalog.some(m=>m.id===editing.id)?'编辑模型':'添加模型'}[panel]} size={520}>
    {panel==='settings'&&<div className="connection-tabs"><Segmented block aria-label="连接类型" value={connectionTab} onChange={setConnectionTab} options={[{value:'maas',label:'模型 API'},{value:'c2c',label:'C2C 服务'}]}/></div>}
    {panel==='settings'&&connectionTab==='c2c'&&<C2CConnection value={c2cConnection} onSave={value=>{setC2cConnection(value);store('arena-c2c-connection',value)}}/>}
-   {panel==='settings'&&connectionTab==='maas'&&<><div className="connection-status"><span className="connection-dot"/><div><strong>{backendKeys.some(k=>k.configured)?'已配置密钥':'尚未配置密钥'}</strong><p>密钥保存在后端，浏览器不保存明文。</p></div></div><Form layout="vertical"><Form.Item label="连接名称"><Input value={connection} onChange={e=>setConnection(e.target.value)}/></Form.Item><Form.Item label="服务地址"><Input value={url} onChange={e=>setUrl(e.target.value)}/></Form.Item>{backendKeys.map(k=><Form.Item key={k.ref} label={k.label+' API Key'} extra={k.configured?'已配置 · 输入新值可替换':'未配置'}><Input.Password placeholder="粘贴该平台 API Key" value={keyDraft[k.ref]||''} onChange={e=>setKeyDraft({...keyDraft,[k.ref]:e.target.value})}/></Form.Item>)}</Form><Button type="primary" block onClick={saveKeys} loading={savingKeys}>保存密钥</Button><p className="drawer-intro">密钥只发送到后端保存，浏览器不回显完整密钥。保存后可真实调用对应模型。</p><Button block onClick={showModels}>管理模型列表</Button></>}
+   {panel==='settings'&&connectionTab==='maas'&&<ModelConnections models={selectedModels} onManage={showModels} onSaved={ids=>{const next=catalog.map(m=>ids.includes(connectionId(m.id))?{...m,connectionId:connectionId(m.id)}:m);setCatalog(next);store('arena-models-v2',next)}}/>}
    {panel==='modelEdit'&&editing&&<><p className="drawer-intro">模型名称会直接显示在回答顶部。请根据服务商控制台填写模型 ID；当前不验证可用性。</p><Form layout="vertical"><Form.Item label="显示名称" required><Input className="soft-focus-field" aria-label="模型显示名称" value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})}/></Form.Item><Form.Item label="模型 ID" required><Input className="soft-focus-field" aria-label="模型 API ID" value={editing.apiId} onChange={e=>setEditing({...editing,apiId:e.target.value})}/></Form.Item><Form.Item label="厂商"><Input className="soft-focus-field" aria-label="模型厂商" value={editing.provider} onChange={e=>setEditing({...editing,provider:e.target.value})}/></Form.Item><Form.Item label="模型能力" extra="勾选的能力默认为「未验证」，待真实接入后验证。"><Select className="soft-focus-field" aria-label="模型能力" mode="multiple" value={editing.capabilities||[]} options={CAPABILITIES.map(c=>({value:c.key,label:c.label}))} onChange={capabilities=>setEditing({...editing,capabilities})}/></Form.Item><Button block type="primary" onClick={saveModel}>保存模型配置</Button></Form></>}
    {panel==='prompt'&&<><p className="drawer-intro">这里设置所有模型共同遵守的要求；输入框中的问题也会原样发给所有已选模型。</p><Input.TextArea aria-label="共同系统提示词" rows={8} value={prompt} onChange={e=>{setPrompt(e.target.value);store('arena-prompt-v2',e.target.value)}}/><p className="muted">配置影响下一次对比，历史记录保留原来的提示词。</p><Button block type="primary" onClick={()=>{setPanel(null);message.success('共同提示词已保存')}}>完成</Button></>}
    {panel==='search'&&<><Input className="soft-focus-field" aria-label="搜索记录关键词" autoFocus prefix={<SearchIcon size={17}/>} value={search} onChange={e=>setSearch(e.target.value)} placeholder="搜索问题或记录名称" allowClear/><div className="search-results">{records.filter(r=>(r.title+r.turns.map(t=>t.question).join(' ')).includes(search)).map(r=><button className="search-row" key={r.id} disabled={busy} onClick={()=>openRecord(r)}><HistoryIcon size={18}/><div><strong>{r.title}</strong><small>{r.date} · {r.turns.length} 轮对话 · {r.plans.length} 个模型</small></div><ArrowRightIcon size={16}/></button>)}{!records.some(r=>(r.title+r.turns.map(t=>t.question).join(' ')).includes(search))&&<div className="empty-state">没有找到相关记录<br/><small>试试更短的关键词</small></div>}</div></>}

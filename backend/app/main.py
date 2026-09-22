@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
 from .config import PORT, BACKEND_DIR
-from .schemas import CompareRequest
+from .schemas import CompareRequest, SettingsRequest
 from .registry import load_models, get_model, key_configured
 from .adapter import stream_completion
 from . import db
@@ -62,6 +62,8 @@ def list_models():
             "provider": m["provider"],
             "modelId": m["modelId"],
             "keyRef": m.get("keyRef"),
+            "baseUrl": m.get("baseUrl", ""),
+            "connectionName": m.get("connectionName", ""),
             "keyConfigured": key_configured(m),
         }
         for m in load_models()
@@ -175,6 +177,8 @@ async def get_task(task_id: str):
 
 @app.get("/api/v1/store/{key}")
 async def get_store(key: str):
+    if key == "backend-settings":
+        return JSONResponse(status_code=403, content=error("private", "私有设置不可直接读取"))
     data = db.get_kv(key)
     if data is None:
         return JSONResponse(status_code=404, content=error("not_found", "键不存在"))
@@ -183,6 +187,8 @@ async def get_store(key: str):
 
 @app.put("/api/v1/store/{key}")
 async def put_store(key: str, body: dict):
+    if key == "backend-settings":
+        return JSONResponse(status_code=403, content=error("private", "私有设置不可直接写入"))
     db.set_kv(key, body.get("value"))
     return {"ok": True}
 
@@ -198,8 +204,8 @@ async def get_settings():
 
 
 @app.put("/api/v1/settings")
-async def put_settings(body: dict):
-    incoming = body.get("keys") or {}
+async def put_settings(body: SettingsRequest):
+    incoming = body.keys
     data = db.get_kv("backend-settings") or {}
     merged = dict(data.get("keys") or {})
     for k, v in incoming.items():
@@ -207,8 +213,23 @@ async def put_settings(body: dict):
             merged[k] = str(v)
         else:
             merged.pop(k, None)
-    db.set_kv("backend-settings", {"keys": merged})
-    return {"ok": True, "configured": {k: bool(v) for k, v in merged.items()}}
+    connections = dict(data.get("connections") or {})
+    available = {m["id"]: m for m in load_models()}
+    for item in body.connections:
+        previous = connections.get(item.id, {})
+        source = available.get(item.inheritFrom, {})
+        ref = "MODEL_" + item.id
+        connection = {
+            "id": item.id, "name": item.name, "provider": item.provider,
+            "modelId": item.modelId, "baseUrl": item.baseUrl,
+            "connectionName": item.connectionName, "keyRef": ref,
+            "fallbackKeyRef": previous.get("fallbackKeyRef") or source.get("keyRef"),
+        }
+        if item.apiKey and item.apiKey.strip():
+            merged[ref] = item.apiKey.strip()
+        connections[item.id] = connection
+    db.set_kv("backend-settings", {**data, "keys": merged, "connections": connections})
+    return {"ok": True, "configured": {k: bool(v) for k, v in merged.items()}, "connectionIds": [item.id for item in body.connections]}
 
 
 if __name__ == "__main__":

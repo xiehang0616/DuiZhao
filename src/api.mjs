@@ -64,3 +64,14 @@ export async function streamCompare(taskId, handlers, {signal}={}) {
  if(!res.ok||!res.body)throw new Error('流式连接失败');
  await consumeSse(res.body,handlers);
 }
+
+export async function putModelConnections(connections) {
+  const res = await fetch(`${BASE_URL}/api/v1/settings`, {
+    method: 'PUT', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({connections}),
+  });
+  if (!res.ok) throw new Error('保存连接配置失败');
+  const result = await res.json();
+  if (!connections.every(item => result.connectionIds?.includes(item.id))) throw new Error('后端未确认保存连接配置');
+  return result;
+}

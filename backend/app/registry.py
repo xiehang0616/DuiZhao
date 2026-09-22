@@ -9,8 +9,11 @@ def load_models():
     try:
         data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     except Exception:
-        return []
-    return data.get("models", [])
+        data = {}
+    models = {m["id"]: m for m in data.get("models", [])}
+    saved = db.get_kv("backend-settings") or {}
+    models.update(saved.get("connections") or {})
+    return list(models.values())
 
 
 def get_model(model_id):
@@ -22,13 +25,19 @@ def key_for(model):
     if not ref:
         return ""
     # 优先读页面保存的密钥，其次读环境变量
+    saved = {}
     try:
         saved = (db.get_kv("backend-settings") or {}).get("keys") or {}
         if saved.get(ref):
             return saved[ref]
     except Exception:
         pass
-    return env(ref)
+    if env(ref):
+        return env(ref)
+    fallback = model.get("fallbackKeyRef")
+    if fallback:
+        return saved.get(fallback) or env(fallback)
+    return ""
 
 
 def key_configured(model):

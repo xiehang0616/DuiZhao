@@ -1,0 +1,5 @@
+.model-connection-group{padding:0 0 8px;margin-bottom:24px}
+.model-connection-group+.model-connection-group{border-top:1px solid var(--border);padding-top:24px}
+.model-connection-group h3{margin:0 0 20px;font-size:15px;font-weight:600;overflow-wrap:anywhere}
+.model-connection-group .ant-form-item:last-child{margin-bottom:12px}
+.connection-empty{padding:32px 0;text-align:center;color:var(--muted)}
