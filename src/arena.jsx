@@ -60,7 +60,7 @@ function TextShimmer({children,duration=1,className=''}){return <span className=
 function TestStatus({testModelId,catalog,availableConnections,failed,result}){
  const m=catalog.find(x=>x.id===testModelId);
  if(!m)return null;
- const conn=(availableConnections||[]).find(c=>c.id===(m.connectionId||m.apiId));
+ const conn=(availableConnections||[]).find(c=>c.id===m.apiId||c.id===m.connectionId);
  const status=modelConnectionStatus(m,availableConnections,failed);
  return <><div className="connection-status"><span className="connection-dot"/><div><strong>{m.name}</strong><p>服务地址：{m.baseUrl||conn?.baseUrl||'未设置'}<br/>模型 ID：{m.apiId}<br/>状态：{status?.label||'未知'}</p></div></div>{result&&<p className="c2c-feedback" role="status">{result.status==='connected'?'✅ 连接成功':result.status==='error'?'❌ 连接失败：'+result.reason:result.reason||''}</p>}</>;
 }
@@ -91,7 +91,7 @@ function Workspace({appearance,onAppearanceChange}){
  const [catalog,setCatalog]=useState(()=>normalizeModels(initialModelState(read).catalog)),[selected,setSelected]=useState(()=>initialModelState(read).selected),[prompt,setPrompt]=useState(()=>read('arena-prompt-v2',DEFAULT_PROMPT));
  const [availableConnections,setAvailableConnections]=useState(null),[connectionsFailed,setConnectionsFailed]=useState(false);
  const refreshConnections=async()=>{try{setAvailableConnections(await listModels());setConnectionsFailed(false)}catch{setConnectionsFailed(true)}};
-const runTest=async()=>{if(!testModelId||testing)return;const target=catalog.find(m=>m.id===testModelId);if(!target)return;setTesting(true);setTestResult(null);try{const res=await testModelConnection(target.connectionId||target.apiId);setTestResult(res);await refreshConnections();if(res.status==='connected')message.success('连接成功');else if(res.status==='error')message.error('连接失败：'+(res.reason||''));else message.info(res.reason||'未配置密钥');}catch(err){setTestResult({status:'error',reason:err?.message||'测试失败'});message.error('测试失败：'+(err?.message||''))}finally{setTesting(false)}};
+const runTest=async()=>{if(!testModelId||testing)return;const target=catalog.find(m=>m.id===testModelId);if(!target)return;setTesting(true);setTestResult(null);try{const res=await testModelConnection(target.apiId||target.connectionId);setTestResult(res);await refreshConnections();if(res.status==='connected')message.success('连接成功');else if(res.status==='error')message.error('连接失败：'+(res.reason||''));else message.info(res.reason||'未配置密钥');}catch(err){setTestResult({status:'error',reason:err?.message||'测试失败'});message.error('测试失败：'+(err?.message||''))}finally{setTesting(false)}};
  const selectedModels=useMemo(()=>selected.map(id=>catalog.find(m=>m.id===id)).filter(Boolean),[selected,catalog]);
  const [library,setLibrary]=useState(()=>read('arena-prompt-library-v1',TEMPLATES.map((t,i)=>({...t,id:'template-'+i,icon:['file','compare','message','settings','check','book'][i],systemPrompt:DEFAULT_PROMPT,home:true}))));
  const [evaluationTasks,setEvaluationTasks]=useState(()=>read('arena-evaluation-tasks-v1',[])),[evaluationSeed,setEvaluationSeed]=useState(null),[evalDraft,setEvalDraft]=useState(null),[evalWithContext,setEvalWithContext]=useState(false);
@@ -166,7 +166,7 @@ const runTest=async()=>{if(!testModelId||testing)return;const target=catalog.fin
  }
  function stopAnswers(){const active=activeStream.current;if(!active)return;active.controller.stop();active.abort.abort();active.timers.forEach(clearTimeout);if(active.taskId)cancelCompare(active.taskId).catch(()=>{});activeStream.current=null}
  function startAnswers(conversation,{demo=false}={}){
-  disposeStream();const turn=conversation.turns.at(-1),modelIds=turn.plans.map(p=>p.connectionId||p.apiId||p.id||p.model);
+  disposeStream();const turn=conversation.turns.at(-1),modelIds=turn.plans.map(p=>p.apiId||p.id||p.model);
   const active={abort:new AbortController(),timers:[],taskId:null};activeStream.current=active;setBusy(true);
   const valid=()=>activeStream.current===active&&currentRef.current?.id===conversation.id;
   active.controller=createAnswerStream({modelIds,reduced:()=>document.hidden||window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -198,14 +198,16 @@ const runTest=async()=>{if(!testModelId||testing)return;const target=catalog.fin
  const isNew=!catalog.some(x=>x.id===editing.id);
  const existingConfigured=!isNew&&(availableConnections||[]).some(c=>(c.id===editing.apiId||c.id===connectionId(editing.id))&&c.keyConfigured);
  if(!existingConfigured&&!editing.apiKey?.trim()){message.warning('请填写 API Key');return}
- const m={...editing,name:editing.name.trim(),apiId:editing.apiId.trim(),provider:editing.provider.trim()||'自定义',capabilities:editing.capabilities||['text'],baseUrl:editing.baseUrl.trim(),keyRef};
+ const serviceModelId=editing.apiId.trim();
+ const isCustom=!preset||editing.baseUrl.trim()!==meta.baseUrl;
+ const m={...editing,name:editing.name.trim(),apiId:isCustom?connectionId(editing.id):serviceModelId,modelId:serviceModelId,provider:editing.provider.trim()||'自定义',capabilities:editing.capabilities||['text'],baseUrl:editing.baseUrl.trim(),keyRef};
  const next=catalog.some(x=>x.id===m.id)?catalog.map(x=>x.id===m.id?m:x):[...catalog,m];
  setCatalog(next);store('arena-models-v2',next);
  if(isNew&&selected.length<2)saveSelection([...selected,m.id]);
  setPanel(null);
  try{
   if(editing.apiKey?.trim())await putSettings({[keyRef]:editing.apiKey.trim()});
-  if(!preset||editing.baseUrl.trim()!==meta.baseUrl)await putModelConnections([{id:connectionId(m.id),name:m.name,provider:m.provider,modelId:m.apiId,baseUrl:m.baseUrl,connectionName:m.name+'连接',inheritFrom:preset?preset.id:undefined}]);
+  if(isCustom)await putModelConnections([{id:connectionId(m.id),name:m.name,provider:m.provider,modelId:serviceModelId,baseUrl:m.baseUrl,connectionName:m.name+'连接',inheritFrom:preset?preset.id:undefined}]);
   await refreshConnections();message.success('已保存模型配置');
  }catch(err){message.error('连接配置保存失败：'+(err?.message||''))}
 }
@@ -221,7 +223,7 @@ const runTest=async()=>{if(!testModelId||testing)return;const target=catalog.fin
  const columns=[
   {title:'参与对比',key:'selected',width:88,render:(_,m)=><Checkbox aria-label={'选择 '+m.name} checked={selected.includes(m.id)} onChange={e=>toggleModel(m.id,e.target.checked)}/>},
   {title:'模型',key:'model',width:250,render:(_,m)=><div className="catalog-model"><span className="catalog-avatar">{m.name.slice(0,1)}</span><div><strong>{m.name}</strong><small>{m.provider}</small></div></div>},
-  {title:'模型 ID',dataIndex:'apiId',width:220,render:s=><code className="model-id">{s}</code>},
+  {title:'模型 ID',key:'modelId',width:220,render:(_,m)=><code className="model-id">{m.modelId||m.apiId}</code>},
   {title:'能力',key:'capabilities',width:220,render:(_,m)=><div className="cap-tags">{(m.capabilities||[]).map(c=>{const cap=CAPABILITIES.find(x=>x.key===c);return <span key={c} className="cap-tag">{cap?cap.label:c}<i>未验证</i></span>})}</div>},
   {title:'连接状态',key:'status',width:125,render:(_,m)=>{const status=modelConnectionStatus(m,availableConnections,connectionsFailed);return <span className={'table-status '+status.tone}><i/>{status.label}</span>}},
   {title:'操作',key:'action',width:88,fixed:'right',render:(_,m)=><button className="table-edit" onClick={()=>{setEditing({...m});setPanel('modelEdit')}}>编辑</button>}
