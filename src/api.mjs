@@ -4,17 +4,25 @@ const BASE_URL =
   (typeof window !== 'undefined' && window.__BACKEND_URL__) ||
   (location.hostname === '127.0.0.1' || location.hostname === 'localhost' ? 'http://127.0.0.1:8000' : '');
 
+// 后端返回的媒体地址是相对路径（/api/v1/media/...），本地开发前端与后端不同源时需补齐后端地址；
+// 绝对地址（上游临时链接）与 data:/blob: 原样返回。
+export function resolveMediaUrl(url) {
+  if (!url) return url;
+  if (/^(https?:|data:|blob:)/.test(url)) return url;
+  return BASE_URL + url;
+}
+
 export async function listModels() {
   const res = await fetch(`${BASE_URL}/api/v1/models`);
   if (!res.ok) throw new Error('模型列表请求失败');
   return res.json();
 }
 
-export async function createCompare({ question, systemPrompt, modelIds, modality, videoResolution, videoDuration, images }, { signal } = {}) {
+export async function createCompare({ question, systemPrompt, modelIds, modality, videoResolution, imageResolution, videoDuration, images }, { signal } = {}) {
   const res = await fetch(`${BASE_URL}/api/v1/compare`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, systemPrompt, modelIds, modality, videoResolution, videoDuration, images, stream: true }),
+    body: JSON.stringify({ question, systemPrompt, modelIds, modality, videoResolution, imageResolution, videoDuration, images, stream: true }),
     signal,
   });
   if (!res.ok) throw new Error('提交对比失败');

@@ -1,8 +1,70 @@
 import asyncio
 import json as _json
+import random
 import httpx
+from .config import MAX_UPSTREAM_CONCURRENCY
 from .endpoints import completion_url, image_generation_url, video_synthesis_url, task_url
 from .registry import key_for
+
+# 上游限流/临时故障的重试策略：并发闸门 + 指数退避（带抖动），避免大量并发触发 429/509。
+_RETRYABLE_STATUS = {429, 500, 502, 503, 504, 509}
+_RETRIES = 3
+_semaphore = asyncio.Semaphore(max(1, MAX_UPSTREAM_CONCURRENCY))
+
+# 图片规格：前端/计费使用规范键（1024x1024/1080P/2K/4K），发送给上游时换算为像素尺寸。
+# 具体支持范围以各厂商图片接口为准，不支持的高规格会返回可读错误。
+IMAGE_SIZES = {
+    "1024x1024": "1024x1024",
+    "1080P": "1920x1080",
+    "2K": "2048x2048",
+    "4K": "3840x2160",
+}
+
+
+def _backoff(attempt):
+    return min(2 ** attempt, 8) * (0.5 + random.random())
+
+
+async def _post_json(url, headers, payload, timeout=30.0):
+    """POST JSON，带并发闸门与对 429/509/5xx 的指数退避重试，返回 httpx.Response。"""
+    attempt = 0
+    while True:
+        try:
+            async with _semaphore:
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    resp = await client.post(url, json=payload, headers=headers)
+            if resp.status_code in _RETRYABLE_STATUS and attempt < _RETRIES:
+                attempt += 1
+                await asyncio.sleep(_backoff(attempt))
+                continue
+            return resp
+        except (httpx.TimeoutException, httpx.ConnectError) as exc:
+            if attempt < _RETRIES:
+                attempt += 1
+                await asyncio.sleep(_backoff(attempt))
+                continue
+            raise exc
+
+
+async def _get_json(url, headers, timeout=30.0):
+    """GET JSON，带与 POST 相同的并发闸门与退避重试。"""
+    attempt = 0
+    while True:
+        try:
+            async with _semaphore:
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    resp = await client.get(url, headers=headers)
+            if resp.status_code in _RETRYABLE_STATUS and attempt < _RETRIES:
+                attempt += 1
+                await asyncio.sleep(_backoff(attempt))
+                continue
+            return resp
+        except (httpx.TimeoutException, httpx.ConnectError) as exc:
+            if attempt < _RETRIES:
+                attempt += 1
+                await asyncio.sleep(_backoff(attempt))
+                continue
+            raise exc
 
 MOCK_TEXT = (
     "这是预置示例回答（未接入真实模型，不代表真实能力）。\n"
@@ -89,11 +151,10 @@ async def test_model_connection(model):
         'stream': False,
     }
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            if resp.status_code != 200:
-                raise RuntimeError(upstream_error(resp.status_code))
-            return True
+        resp = await _post_json(url, headers, payload, timeout=30.0)
+        if resp.status_code != 200:
+            raise RuntimeError(upstream_error(resp.status_code))
+        return True
     except httpx.TimeoutException:
         raise RuntimeError('连接超时，请检查服务地址和网络。')
     except httpx.ConnectError:
@@ -115,54 +176,78 @@ async def _stream_real(model, question, system_prompt, key, stats=None, images=N
         "stream": True,
         "stream_options": {"include_usage": True},
     }
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        async with client.stream("POST", url, json=payload, headers=headers) as resp:
-            if resp.status_code != 200:
-                raise RuntimeError(upstream_error(resp.status_code))
-            received_content = False
-            async for line in resp.aiter_lines():
-                if not line.startswith("data:"):
-                    continue
-                data = line[5:].strip()
-                if data == "[DONE]":
-                    break
-                try:
-                    obj = _json.loads(data)
-                    if obj.get("usage") and stats is not None:
-                        stats["usage"] = obj["usage"]
-                    delta = obj["choices"][0]["delta"].get("content")
-                    if delta:
-                        received_content = True
-                        yield delta
-                except Exception:
-                    continue
+    attempt = 0
+    sent_any = False
+    while True:
+        try:
+            async with _semaphore:
+                async with httpx.AsyncClient(timeout=120.0) as client:
+                    async with client.stream("POST", url, json=payload, headers=headers) as resp:
+                        if resp.status_code != 200:
+                            if resp.status_code in _RETRYABLE_STATUS and attempt < _RETRIES:
+                                attempt += 1
+                                await asyncio.sleep(_backoff(attempt))
+                                continue
+                            raise RuntimeError(upstream_error(resp.status_code))
+                        received_content = False
+                        async for line in resp.aiter_lines():
+                            if not line.startswith("data:"):
+                                continue
+                            data = line[5:].strip()
+                            if data == "[DONE]":
+                                break
+                            try:
+                                obj = _json.loads(data)
+                                if obj.get("usage") and stats is not None:
+                                    stats["usage"] = obj["usage"]
+                                delta = obj["choices"][0]["delta"].get("content")
+                                if delta:
+                                    received_content = True
+                                    sent_any = True
+                                    yield delta
+                            except Exception:
+                                continue
 
-            if not received_content:
-                raise RuntimeError('接口未返回有效的流式回答，请检查服务地址、模型 ID 及 OpenAI Chat Completions 兼容性。')
+                        if not received_content:
+                            raise RuntimeError('接口未返回有效的流式回答，请检查服务地址、模型 ID 及 OpenAI Chat Completions 兼容性。')
+                        return
+        except (httpx.TimeoutException, httpx.ConnectError) as exc:
+            # 已产出正文后不再重试，避免重复发送；仅在未收到任何内容时退避重试。
+            if not sent_any and attempt < _RETRIES:
+                attempt += 1
+                await asyncio.sleep(_backoff(attempt))
+                continue
+            raise exc
 
 
-async def generate_image(model, prompt):
-    """同步生成一张图片，返回 {'type':'image','url':...} 或 {'type':'image','b64':...}。"""
+async def generate_image(model, prompt, size="1024x1024", images=None):
+    """生成一张图片。images 为参考图 data URL（图生图 i2i），size 为规格（1024x1024/1080P/2K/4K）。
+    返回 {'type':'image','url':...} 或 {'type':'image','b64':...}。"""
     key = key_for(model)
     if not key:
         raise RuntimeError('未配置 API Key，请先在模型配置里填写密钥。')
     url = image_generation_url(model.get('baseUrl', ''))
     headers = {'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'}
-    payload = {'model': model.get('modelId'), 'prompt': prompt, 'size': '1024x1024', 'response_format': 'url'}
+    # size 为规范键，上游需要像素尺寸；返回时仍保留规范键供计费使用。
+    upstream_size = IMAGE_SIZES.get(size, size)
+    payload = {'model': model.get('modelId'), 'prompt': prompt, 'size': upstream_size, 'response_format': 'url'}
+    # 图生图：传参考图。不同服务商字段名不同（image / images / input.ref_img），
+    # 这里按 OpenAI 兼容接口传 image 数组；如厂商协议不同需在平台文档确认后调整。
+    if images:
+        payload['image'] = list(images)
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            if resp.status_code != 200:
-                raise RuntimeError(upstream_message(resp))
-            data = resp.json()
-            items = data.get('data') or []
-            urls = [it.get('url') for it in items if it.get('url')]
-            b64s = [it.get('b64_json') for it in items if it.get('b64_json')]
-            if urls:
-                return {'type': 'image', 'url': urls[0], 'urls': urls, 'size': payload['size']}
-            if b64s:
-                return {'type': 'image', 'b64': b64s[0], 'b64s': b64s, 'size': payload['size']}
-            raise RuntimeError('图片接口未返回图片内容，请检查模型 ID 是否支持图片生成。')
+        resp = await _post_json(url, headers, payload, timeout=120.0)
+        if resp.status_code != 200:
+            raise RuntimeError(upstream_message(resp))
+        data = resp.json()
+        items = data.get('data') or []
+        urls = [it.get('url') for it in items if it.get('url')]
+        b64s = [it.get('b64_json') for it in items if it.get('b64_json')]
+        if urls:
+            return {'type': 'image', 'url': urls[0], 'urls': urls, 'size': size}
+        if b64s:
+            return {'type': 'image', 'b64': b64s[0], 'b64s': b64s, 'size': size}
+        raise RuntimeError('图片接口未返回图片内容，请检查模型 ID 是否支持图片生成。')
     except httpx.TimeoutException:
         raise RuntimeError('图片生成超时，请稍后重试。')
     except httpx.ConnectError:
@@ -181,15 +266,14 @@ async def submit_video(model, prompt, resolution="720P", duration=5, image=None)
         input_data['media'] = [{'type': 'first_frame', 'url': image}]
     payload = {'model': model.get('modelId'), 'input': input_data, 'parameters': {'resolution': resolution, 'duration': duration}}
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            if resp.status_code != 200:
-                raise RuntimeError(upstream_message(resp))
-            data = resp.json()
-            task_id = (data.get('output') or {}).get('task_id')
-            if not task_id:
-                raise RuntimeError('视频任务提交失败：未返回任务 ID。')
-            return task_id
+        resp = await _post_json(url, headers, payload, timeout=60.0)
+        if resp.status_code != 200:
+            raise RuntimeError(upstream_message(resp))
+        data = resp.json()
+        task_id = (data.get('output') or {}).get('task_id')
+        if not task_id:
+            raise RuntimeError('视频任务提交失败：未返回任务 ID。')
+        return task_id
     except httpx.TimeoutException:
         raise RuntimeError('视频任务提交超时，请稍后重试。')
     except httpx.ConnectError:
@@ -201,12 +285,11 @@ async def query_video(model, task_id):
     key = key_for(model)
     url = task_url(model.get('baseUrl', ''), task_id)
     headers = {'Authorization': f'Bearer {key}'}
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.get(url, headers=headers)
-        if resp.status_code != 200:
-            raise RuntimeError(upstream_message(resp))
-        data = resp.json()
-        output = data.get('output') or {}
-        status = output.get('task_status') or output.get('status') or ''
-        video_url = output.get('video_url') or (output.get('results') or {}).get('video_url')
-        return status, video_url
+    resp = await _get_json(url, headers, timeout=30.0)
+    if resp.status_code != 200:
+        raise RuntimeError(upstream_message(resp))
+    data = resp.json()
+    output = data.get('output') or {}
+    status = output.get('task_status') or output.get('status') or ''
+    video_url = output.get('video_url') or (output.get('results') or {}).get('video_url')
+    return status, video_url

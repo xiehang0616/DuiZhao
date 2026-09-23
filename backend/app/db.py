@@ -1,7 +1,8 @@
 import json
+import shutil
 import sqlite3
 from pathlib import Path
-from .config import BACKEND_DIR, env
+from .config import BACKEND_DIR, env, PERSIST_DIR
 
 
 def _db_path():
@@ -22,7 +23,46 @@ def _conn():
     return conn
 
 
+def _snapshot_path():
+    """返回持久化快照路径；未配置 PERSIST_DIR（TOS 挂载点）时为 None，不启用快照备份。"""
+    if not PERSIST_DIR:
+        return None
+    return PERSIST_DIR / "duizhao.db"
+
+
+def restore_db():
+    """新实例启动时，从持久化目录恢复上次快照（/tmp 的 SQLite 随实例回收丢失）。"""
+    target = _snapshot_path()
+    if not target or not target.exists():
+        return
+    if DB_PATH.exists() and DB_PATH.stat().st_size > 0:
+        return
+    try:
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        DB_PATH.write_bytes(target.read_bytes())
+    except Exception:
+        pass
+
+
+def snapshot_db():
+    """把当前 SQLite 落成一致快照到持久化目录；失败静默（不影响本次请求）。"""
+    target = _snapshot_path()
+    if not target:
+        return
+    try:
+        conn = _conn()
+        try:
+            conn.execute("PRAGMA wal_checkpoint(FULL)")
+        finally:
+            conn.close()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(DB_PATH, target)
+    except Exception:
+        pass
+
+
 def init_db():
+    restore_db()
     conn = _conn()
     try:
         conn.executescript(
@@ -67,6 +107,7 @@ def create_task(task_id, question, system_prompt, model_ids):
         conn.commit()
     finally:
         conn.close()
+    snapshot_db()
 
 
 def set_task_status(task_id, status):
@@ -76,6 +117,7 @@ def set_task_status(task_id, status):
         conn.commit()
     finally:
         conn.close()
+    snapshot_db()
 
 
 def save_result(task_id, model_id, full_text, first_token_ms, total_ms, usage, error, status="done"):
@@ -107,6 +149,7 @@ def save_result(task_id, model_id, full_text, first_token_ms, total_ms, usage, e
         conn.commit()
     finally:
         conn.close()
+    snapshot_db()
 
 
 def get_task(task_id):
@@ -159,3 +202,4 @@ def set_kv(key, value):
         conn.commit()
     finally:
         conn.close()
+    snapshot_db()

@@ -2,6 +2,7 @@ import asyncio
 import json
 import time
 import uuid
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
@@ -9,6 +10,7 @@ from .config import PORT, BACKEND_DIR
 from .schemas import CompareRequest, SettingsRequest
 from .registry import load_models, get_model, key_configured
 from .adapter import stream_completion, test_model_connection, generate_image, submit_video, query_video, model_kind
+from .media import persist_media, MEDIA_DIR
 from . import db
 from .connection_status import connection_status, record_connection_status
 
@@ -91,6 +93,17 @@ async def test_connection(model_id: str):
         return {"status": "error", "reason": str(exc)}
 
 
+@app.get("/api/v1/media/{filename}")
+async def serve_media(filename: str):
+    """稳定媒体地址：已落盘的生成图片/视频，不随上游临时签名链接过期。"""
+    if Path(filename).name != filename:
+        return JSONResponse(status_code=400, content=error("bad_request", "非法文件名"))
+    file = MEDIA_DIR / filename
+    if not file.is_file():
+        return JSONResponse(status_code=404, content=error("not_found", "媒体不存在或已被清理"))
+    return FileResponse(file)
+
+
 @app.post("/api/v1/compare")
 async def compare(req: CompareRequest):
     task_id = uuid.uuid4().hex
@@ -101,6 +114,7 @@ async def compare(req: CompareRequest):
         "models": req.modelIds,
         "modality": req.modality,
         "videoResolution": req.videoResolution,
+        "imageResolution": req.imageResolution,
         "videoDuration": req.videoDuration,
         "images": req.images,
         "cancelled": False,
@@ -133,7 +147,8 @@ async def events(task_id: str):
                     raise ValueError(f"模型 {model_id} 不存在")
 
                 if modality == "image":
-                    media = await generate_image(model, task["question"])
+                    media = await generate_image(model, task["question"], size=task.get("imageResolution") or "1024x1024", images=task.get("images") or None)
+                    media = await persist_media(media)
                     total_ms = round((time.perf_counter() - start) * 1000, 1)
                     record_connection_status(model, "connected")
                     db.save_result(task_id, model_id, json.dumps(media, ensure_ascii=False), None, total_ms, None, None, "done")
@@ -151,7 +166,7 @@ async def events(task_id: str):
                         if status in ("SUCCEEDED", "SUCCESS"):
                             if not video_url:
                                 raise RuntimeError("视频任务完成，但未返回视频地址。")
-                            media = {"type": "video", "url": video_url}
+                            media = await persist_media({"type": "video", "url": video_url})
                             total_ms = round((time.perf_counter() - start) * 1000, 1)
                             record_connection_status(model, "connected")
                             db.save_result(task_id, model_id, json.dumps(media, ensure_ascii=False), None, total_ms, None, None, "done")

@@ -9,6 +9,7 @@ class CompareRequest(BaseModel):
     stream: bool = True
     modality: str = Field("text")
     videoResolution: str = Field("720P", pattern=r"^(720P|1080P)$")
+    imageResolution: str = Field("1024x1024", pattern=r"^(1024x1024|1080P|2K|4K)$")
     videoDuration: int = Field(5, ge=1, le=30)
     images: List[str] = Field(default_factory=list)
 
