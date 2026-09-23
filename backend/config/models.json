@@ -791,6 +791,22 @@
       "modelId": "generalv3.5",
       "baseUrl": "https://spark-api-open.xf-yun.com/v1",
       "keyRef": "KEY_SPARK"
+    },
+    {
+      "id": "qwen3.8-max-0902",
+      "name": "Qwen3.8-Max-0902",
+      "provider": "千问AI平台",
+      "modelId": "qwen3.8-max-0902",
+      "baseUrl": "https://maas.qianwenaiapi.com/compatible-mode/v1",
+      "keyRef": "KEY_QWENAI"
+    },
+    {
+      "id": "qwen-image-3.0-pro",
+      "name": "Qwen-Image-3.0-Pro",
+      "provider": "千问AI平台",
+      "modelId": "qwen-image-3.0-pro",
+      "baseUrl": "https://maas.qianwenaiapi.com/compatible-mode/v1",
+      "keyRef": "KEY_QWENAI"
     }
   ]
 }

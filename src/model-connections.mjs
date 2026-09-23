@@ -135,6 +135,8 @@ export const MODEL_PRESETS = [
   { id:'hunyuan-image', name:'混元图像', provider:'腾讯混元', capabilities:['image_generate'] },
   { id:'ernie-4.0-8k', name:'百度文心 4.0', provider:'百度文心', capabilities:['text'] },
   { id:'generalv3.5', name:'讯飞星火 3.5', provider:'讯飞星火', capabilities:['text'] },
+  { id:'qwen3.8-max-0902', name:'Qwen3.8-Max-0902', provider:'千问AI平台', capabilities:['text'] },
+  { id:'qwen-image-3.0-pro', name:'Qwen-Image-3.0-Pro', provider:'千问AI平台', capabilities:['image_generate'] },
 ];
 
 const PROVIDER_META = {
@@ -146,6 +148,7 @@ const PROVIDER_META = {
   '腾讯混元': { baseUrl:'https://api.hunyuan.cloud.tencent.com/v1', keyRef:'KEY_HUNYUAN' },
   '百度文心': { baseUrl:'https://qianfan.baidubce.com/v2', keyRef:'KEY_ERNIE' },
   '讯飞星火': { baseUrl:'https://spark-api-open.xf-yun.com/v1', keyRef:'KEY_SPARK' },
+  '千问AI平台': { baseUrl:'https://maas.qianwenaiapi.com/compatible-mode/v1', keyRef:'KEY_QWENAI' },
 };
 
 export const presetMeta = provider => PROVIDER_META[provider] || { baseUrl:'', keyRef:'KEY_CUSTOM' };
