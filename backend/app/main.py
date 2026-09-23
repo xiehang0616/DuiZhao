@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
 from .config import PORT, BACKEND_DIR
 from .schemas import CompareRequest, SettingsRequest
 from .registry import load_models, get_model, key_configured
-from .adapter import stream_completion, test_model_connection, generate_image, submit_video, query_video
+from .adapter import stream_completion, test_model_connection, generate_image, submit_video, query_video, model_kind
 from . import db
 from .connection_status import connection_status, record_connection_status
 
@@ -79,6 +79,9 @@ async def test_connection(model_id: str):
         return JSONResponse(status_code=404, content=error("not_found", "模型不存在"))
     if not key_configured(model):
         return {"status": "unconfigured", "reason": "未配置 API Key"}
+    kind = model_kind(model)
+    if kind in ("image", "video"):
+        return {"status": "skipped", "reason": "该模型为%s生成模型，请在对应模式发送一次真实生成来验证连通性。" % ("视频" if kind == "video" else "图片")}
     try:
         await test_model_connection(model)
         record_connection_status(model, "connected")
@@ -99,6 +102,7 @@ async def compare(req: CompareRequest):
         "modality": req.modality,
         "videoResolution": req.videoResolution,
         "videoDuration": req.videoDuration,
+        "images": req.images,
         "cancelled": False,
     }
     return {"taskId": task_id, "modelIds": req.modelIds}
@@ -138,7 +142,8 @@ async def events(task_id: str):
                     return
 
                 if modality == "video":
-                    video_task_id = await submit_video(model, task["question"], task.get("videoResolution", "720P"), task.get("videoDuration", 5))
+                    first_image = (task.get("images") or [None])[0]
+                    video_task_id = await submit_video(model, task["question"], task.get("videoResolution", "720P"), task.get("videoDuration", 5), first_image)
                     while True:
                         if task.get("cancelled"):
                             raise asyncio.CancelledError()
@@ -157,7 +162,7 @@ async def events(task_id: str):
                             raise RuntimeError("视频生成失败（任务状态：" + status + "）")
                         await asyncio.sleep(3)
 
-                async for chunk in stream_completion(model, task["question"], task["systemPrompt"], stats):
+                async for chunk in stream_completion(model, task["question"], task["systemPrompt"], stats, task.get("images")):
                     if first_token_ms is None:
                         first_token_ms = round((time.perf_counter() - start) * 1000, 1)
                     collected.append(chunk)

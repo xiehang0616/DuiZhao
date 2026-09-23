@@ -10,7 +10,7 @@ def parse(body):
 
 def test_models_start_in_parallel_and_finish_independently(monkeypatch):
     started = set()
-    async def fake(model, question, prompt, stats):
+    async def fake(model, question, prompt, stats, images=None):
         started.add(model['id'])
         for _ in range(20):
             if len(started) == 2:
@@ -29,7 +29,7 @@ def test_models_start_in_parallel_and_finish_independently(monkeypatch):
     assert client.get(f'/api/v1/compare/{tid}').json()['status'] == 'completed'
 
 def test_failure_does_not_discard_peer_or_partial_text(monkeypatch):
-    async def fake(model, question, prompt, stats):
+    async def fake(model, question, prompt, stats, images=None):
         yield '已收到'
         if model['id'] == 'qwen3.8-flash':
             raise RuntimeError('测试失败')
@@ -43,7 +43,7 @@ def test_failure_does_not_discard_peer_or_partial_text(monkeypatch):
     assert results['deepseek-chat']['status'] == 'done'
 
 def test_cancel_interrupts_waiting_providers_and_saves_partial_text(monkeypatch):
-    async def fake(model, question, prompt, stats):
+    async def fake(model, question, prompt, stats, images=None):
         yield '已收到'
         await asyncio.sleep(60)
         yield '不应出现'

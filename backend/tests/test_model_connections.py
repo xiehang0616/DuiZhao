@@ -56,7 +56,7 @@ def test_compare_resolves_each_saved_connection(monkeypatch):
     monkeypatch.setattr(db, 'get_kv', lambda key: state.get(key))
     monkeypatch.setattr(db, 'set_kv', lambda key, value: state.update({key: value}))
     called = []
-    async def fake_stream(model, question, prompt, stats):
+    async def fake_stream(model, question, prompt, stats, images=None):
         called.append((model['id'], model['baseUrl'], model['modelId']))
         yield '测试回答'
     monkeypatch.setattr(main, 'stream_completion', fake_stream)

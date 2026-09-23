@@ -14,13 +14,13 @@ MOCK_TEXT = (
 )
 
 
-async def stream_completion(model, question, system_prompt, stats=None):
-    """逐段产出文本；无 Key 时走 mock，有 Key 时走真实 OpenAI 兼容接口。stats 用于回填 usage。"""
+async def stream_completion(model, question, system_prompt, stats=None, images=None):
+    """逐段产出文本；无 Key 时走 mock，有 Key 时走真实 OpenAI 兼容接口。images 为图片 data URL，用于多模态理解。"""
     key = key_for(model)
     if stats is not None:
         stats["source"] = "api" if key else "demo"
     if key:
-        async for chunk in _stream_real(model, question, system_prompt, key, stats):
+        async for chunk in _stream_real(model, question, system_prompt, key, stats, images):
             yield chunk
     else:
         async for chunk in _stream_mock(model):
@@ -64,6 +64,17 @@ def upstream_message(resp):
     return upstream_error(resp.status_code)
 
 
+def model_kind(model):
+    """根据模型 ID/名称推断生成类型：video / image / text。"""
+    mid = (model.get('modelId') or '').lower()
+    name = (model.get('name') or '').lower()
+    if any(k in mid for k in ('t2v', 'i2v', 'r2v', 'video', 't2a', 'i2a')) or '视频' in name:
+        return 'video'
+    if any(k in mid for k in ('t2i', 'i2i', 'image', 'seedream', 'cogview', 'kolors')) or '图像' in name or '文生图' in name or '图生图' in name:
+        return 'image'
+    return 'text'
+
+
 async def test_model_connection(model):
     """发起一次最小真实调用（1 token），成功返回 True，失败抛可读异常。"""
     key = key_for(model)
@@ -89,14 +100,17 @@ async def test_model_connection(model):
         raise RuntimeError('无法连接服务地址，请检查地址是否正确。')
 
 
-async def _stream_real(model, question, system_prompt, key, stats=None):
+async def _stream_real(model, question, system_prompt, key, stats=None, images=None):
     url = completion_url(model.get("baseUrl", ""))
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    user_content = question
+    if images:
+        user_content = [{"type": "text", "text": question}] + [{"type": "image_url", "image_url": {"url": img}} for img in images]
     payload = {
         "model": model.get("modelId"),
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": question},
+            {"role": "user", "content": user_content},
         ],
         "stream": True,
         "stream_options": {"include_usage": True},
@@ -153,14 +167,17 @@ async def generate_image(model, prompt):
         raise RuntimeError('无法连接服务地址，请检查地址是否正确。')
 
 
-async def submit_video(model, prompt, resolution="720P", duration=5):
-    """提交视频生成任务，返回任务 ID。"""
+async def submit_video(model, prompt, resolution="720P", duration=5, image=None):
+    """提交视频生成任务，返回任务 ID。image 为首帧参考图（data URL 或公网 URL），用于图生视频。"""
     key = key_for(model)
     if not key:
         raise RuntimeError('未配置 API Key，请先在模型配置里填写密钥。')
     url = video_synthesis_url(model.get('baseUrl', ''))
     headers = {'Authorization': f'Bearer {key}', 'Content-Type': 'application/json', 'X-DashScope-Async': 'enable'}
-    payload = {'model': model.get('modelId'), 'input': {'prompt': prompt}, 'parameters': {'resolution': resolution, 'duration': duration}}
+    input_data = {'prompt': prompt}
+    if image:
+        input_data['media'] = [{'type': 'first_frame', 'url': image}]
+    payload = {'model': model.get('modelId'), 'input': input_data, 'parameters': {'resolution': resolution, 'duration': duration}}
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(url, json=payload, headers=headers)

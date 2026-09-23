@@ -10,6 +10,7 @@ class CompareRequest(BaseModel):
     modality: str = Field("text")
     videoResolution: str = Field("720P", pattern=r"^(720P|1080P)$")
     videoDuration: int = Field(5, ge=1, le=30)
+    images: List[str] = Field(default_factory=list)
 
 
 from .endpoints import service_address

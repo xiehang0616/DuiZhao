@@ -14,3 +14,5 @@ export function formatFileSize(bytes){return bytes<1024?`${bytes} B`:bytes<1024*
 export function attachmentSnapshots(items){return items.map(({id,type,name,size,content})=>({id,type,name,...(size!==undefined?{size}:{}),...(type==='text'?{content}: {})}))}
 export function attachmentText(items=[]){return items.map(a=>a.type==='text'?`文本附件「${a.name}」：\n${a.content}`:`附件「${a.name}」 · ${formatFileSize(a.size||0)}（仅文件信息）`).join('\n\n')}
 export function questionWithAttachments(question,items=[]){const text=attachmentText(items.filter(a=>a.type==='text'));return question+(text?'\n\n--- 附加材料 ---\n'+text:'')}
+export function fileToDataURL(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(r.error||new Error('读取文件失败'));r.readAsDataURL(file)})}
+export async function imageDataUrls(items=[]){return Promise.all(items.filter(a=>a.type==='image'&&a.file).map(a=>fileToDataURL(a.file)))}
