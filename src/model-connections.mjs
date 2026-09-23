@@ -150,4 +150,4 @@ const PROVIDER_META = {
 
 export const presetMeta = provider => PROVIDER_META[provider] || { baseUrl:'', keyRef:'KEY_CUSTOM' };
 
-export const presetFor = model => MODEL_PRESETS.find(p => p.id===model.apiId && p.name===model.name && p.provider===model.provider && JSON.stringify(p.capabilities)===JSON.stringify(model.capabilities||[])) || null;
+export const presetFor = model => MODEL_PRESETS.find(p => p.id===model.apiId) || null;

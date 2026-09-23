@@ -155,11 +155,13 @@ async def generate_image(model, prompt):
             if resp.status_code != 200:
                 raise RuntimeError(upstream_message(resp))
             data = resp.json()
-            item = (data.get('data') or [{}])[0]
-            if item.get('url'):
-                return {'type': 'image', 'url': item['url'], 'size': payload['size']}
-            if item.get('b64_json'):
-                return {'type': 'image', 'b64': item['b64_json'], 'size': payload['size']}
+            items = data.get('data') or []
+            urls = [it.get('url') for it in items if it.get('url')]
+            b64s = [it.get('b64_json') for it in items if it.get('b64_json')]
+            if urls:
+                return {'type': 'image', 'url': urls[0], 'urls': urls, 'size': payload['size']}
+            if b64s:
+                return {'type': 'image', 'b64': b64s[0], 'b64s': b64s, 'size': payload['size']}
             raise RuntimeError('图片接口未返回图片内容，请检查模型 ID 是否支持图片生成。')
     except httpx.TimeoutException:
         raise RuntimeError('图片生成超时，请稍后重试。')
