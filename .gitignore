@@ -1,25 +1,50 @@
-# 依赖
+# Dependencies and caches
 node_modules/
-__pycache__/
-*.pyc
 .venv/
 venv/
+__pycache__/
+*.py[cod]
 .pytest_cache/
-
-# 本地数据库
-backend/data/
-*.db
-
-# 构建产物（由 npm run build 生成后拷贝到后端 static）
-backend/static/
-
-# 环境与密钥
-.env
-.env.local
-
-# 系统文件
 .DS_Store
 
-# 交付归档大文件（不入库）
-对照-DUIZHAO-开发交接-*.zip
+# Local secrets and deployment credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.vefaas/
+.aws/
+credentials.json
+secrets.json
+
+# Runtime data and generated output
+backend/data/
+backend/static/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+arena.html
+index.html
+loading-demo.html
+*.zip
 *.zip.sha256
+
+# Private planning, integrations and reference materials
+**/feishu/
+**/*PRD*
+**/*prd*
+**/*飞书*
+**/*需求与验收*
+**/requirements.json
+archive/
+.impeccable/
+.vscode/
+assets/brand/
+docs/screenshots/
+*.code-workspace
+HANDOFF.md
+PRODUCT.md
